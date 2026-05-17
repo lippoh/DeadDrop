@@ -1,0 +1,38 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+// server/prisma/schema.prisma
+
+ 
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+// ─── Phase 1: Dead Drops ───
+
+model DeadDrop {
+
+  id           String   @id @default(uuid())
+  token        String   @unique          // URL slug for sharing
+  ciphertext   String                    // AES-256-GCM encrypted message
+  iv           String                    // 96-bit initialization vector
+  salt         String                    // PBKDF2 salt
+  hasPassword  Boolean  @default(false)  // Whether password protection is enabled
+  passwordHash String?                   // bcrypt hash (only if hasPassword = true)
+  expiryHours  Int      @default(48)     // Hours until auto-deletion
+  isRead       Boolean  @default(false)  // Has the drop been read?
+  readAt       DateTime?                 // When it was read (null = unread)
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime                  // Calculated on creation
+
+  @@map("dead_drops")
+
+}
