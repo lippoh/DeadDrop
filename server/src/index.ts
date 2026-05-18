@@ -1,10 +1,20 @@
 import dotenv from 'dotenv';
+
 dotenv.config();
-
+ 
 import { app } from './app';
+import { env } from './config/env';
+import { startCleanupJob } from './jobs/cleanup.job';
 
-const PORT = process.env.PORT || 5000;
+
+const PORT = env.PORT;
 
 app.listen(PORT, () => {
-  console.log(`DeadDrop server running on port ${PORT}`);
+  console.log(`\n  DeadDrop Server\n`);
+  console.log(`  Environment: ${env.NODE_ENV}`);
+  console.log(`  Port: ${PORT}`);
+  console.log(`  CORS: ${env.CORS_ORIGIN}\n`);
+
+  // Start the expired dead drops cleanup job
+  startCleanupJob();
 });

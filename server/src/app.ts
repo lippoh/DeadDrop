@@ -1,14 +1,51 @@
+
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import { env } from './config/env';
+import { deadDropRoutes } from './modules/deaddrops/deaddrops.routes';
+import { errorHandler } from './middleware/error.middleware';
+
 
 export const app = express();
 
-app.use(cors());
-app.use(express.json());
+ 
+// ─── Middleware ───
 
-// Health check
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok' });
+// CORS: allow requests from the frontend
+app.use(cors({
+  origin: env.CORS_ORIGIN,
+  methods: ['GET', 'POST', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Parse JSON request bodies
+app.use(express.json({ limit: '10mb' }));
+
+// Request logging (development only)
+if (env.NODE_ENV === 'development') {
+  app.use((req: Request, _res: Response, next) => {
+    console.log(`[${req.method}] ${req.path}`);
+    next();
+  });
+}
+
+
+// ─── API Routes ───
+
+// Health check endpoint (keep this!)
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  });
 });
+ 
+// Dead Drop API routes
+app.use('/api/drops', deadDropRoutes);
+
+
+// ─── Error Handler (MUST be last) ───
+
+app.use(errorHandler);
 
 export default app;
