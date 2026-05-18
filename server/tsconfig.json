@@ -34,7 +34,7 @@
     "types": ["node"],
 
     "paths": {
-      "@/*": ["./src/app/*"]
+      "@/*": ["./src/*"]
     },
 
     "ignoreDeprecations": "6.0"
