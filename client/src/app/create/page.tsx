@@ -8,6 +8,7 @@ import { useDeadDropStore } from "@/store/useDeadDropStore";
 import AnimatedButton from "@/components/AnimatedButton";
 import BurningEmber from "@/components/BurningEmber";
 import { Lock, Hourglass, ChevronDown, ArrowLeft, Copy, Check, Flame, AlertTriangle } from "lucide-react";
+import { createDrop } from "@/lib/api";
 
 export default function CreateDropPage() {
   const router = useRouter();
@@ -41,24 +42,20 @@ export default function CreateDropPage() {
       const securePassword = usePassword && password ? password : crypto.randomUUID();
       const payload = await encryptMessage(message, securePassword);
 
-      const res = await fetch("/api/drops", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...payload,
-          hasPassword: usePassword,
-          password: usePassword ? password : securePassword,
-          expiryHours: parseInt(expiry),
-        }),
+      const data = await createDrop({
+        ciphertext: payload.ciphertext,
+        iv: payload.iv,
+        salt: payload.salt,
+        hasPassword: usePassword,
+        password: usePassword ? password : securePassword,
+        expiryHours: parseInt(expiry),
       });
 
-      const data = await res.json();
       console.log("Backend response:", JSON.stringify(data, null, 2));
-      console.log("Status:", res.status);
 
       const link = `${window.location.origin}/d/${data.token}`;
       setResultLink(link);
-      setEncryptionKey(securePassword); // <<< THE FIX: save the encryption key
+      setEncryptionKey(securePassword);
     } catch (error) {
       console.error("Encryption failed", error);
     } finally {

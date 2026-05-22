@@ -4,8 +4,9 @@ export interface CreateDropRequest {
   ciphertext: string;
   iv: string;
   salt: string;
+   hasPassword: boolean;
   password: string;
-  expiresIn?: number;
+  expiryHours?: number;
 }
 
 export interface CreateDropResponse {
