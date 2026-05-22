@@ -1,11 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-
-/**
- * GradientOrbs — Soft, slow-moving radial gradient blobs
- * in the dark pink palette. Complements the canvas particle system.
- */
+import { useSyncExternalStore, useEffect, useRef } from 'react';
 
 const ORBS = [
   {
@@ -30,8 +25,21 @@ const ORBS = [
   },
 ];
 
+function useIsMobile(breakpoint = 768) {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+      mql.addEventListener('change', onChange);
+      return () => mql.removeEventListener('change', onChange);
+    },
+    () => window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches,
+    () => false
+  );
+}
+
 export default function GradientOrbs() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -57,8 +65,8 @@ export default function GradientOrbs() {
           style={{
             left: `${orb.x}%`,
             top: `${orb.y}%`,
-            width: orb.size,
-            height: orb.size,
+            width: isMobile ? orb.size * 0.5 : orb.size,
+            height: isMobile ? orb.size * 0.5 : orb.size,
             background: `radial-gradient(circle, ${orb.color} 0%, transparent 70%)`,
             transform: 'translate(-50%, -50%)',
             animation: `orbFloat${i} ${orb.duration}s ease-in-out infinite`,

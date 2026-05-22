@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 interface Config {
   particleCount: number;
+  mobileParticleCount: number;
   maxLineDistance: number;
+  mobileLineDistance: number;
   particleSpeed: number;
   mouseRadius: number;
   mouseForce: number;
@@ -23,7 +25,9 @@ interface Config {
 
 const CONFIG: Config = {
   particleCount: 140,
+  mobileParticleCount: 40,
   maxLineDistance: 150,
+  mobileLineDistance: 75,
   particleSpeed: 0.3,
   mouseRadius: 200,
   mouseForce: 0.02,
@@ -96,7 +100,6 @@ function drawParticle(ctx: CanvasRenderingContext2D, p: Particle, time: number) 
   const pulse = Math.sin(time * p.pulseSpeed + p.pulseOffset) * 0.3 + 0.7;
   const currentOpacity = p.opacity * pulse;
 
-  // Outer glow
   const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.glowSize);
   gradient.addColorStop(0, p.glowColor);
   gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -106,14 +109,12 @@ function drawParticle(ctx: CanvasRenderingContext2D, p: Particle, time: number) 
   ctx.globalAlpha = currentOpacity * 0.6;
   ctx.fill();
 
-  // Core dot
   ctx.beginPath();
   ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
   ctx.fillStyle = p.color;
   ctx.globalAlpha = currentOpacity;
   ctx.fill();
 
-  // Bright center highlight
   ctx.beginPath();
   ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
   ctx.fillStyle = '#ffffff';
@@ -148,27 +149,54 @@ function drawLine(
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function AmbientBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particlesRef = useRef<Particle[]>([]);
-  const mouseRef = useRef({ x: -1000, y: -1000 });
-  const animationRef = useRef<number>(0);
-  const timeRef = useRef<number>(0);
 
-  const initParticles = useCallback((width: number, height: number) => {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const isMobile = window.innerWidth < 768;
     const particles: Particle[] = [];
-    for (let i = 0; i < CONFIG.particleCount; i++) {
-      particles.push(
-        createParticle(width, height, CONFIG.colors.particles, CONFIG.colors.glow, CONFIG.sizes)
-      );
+    const mouse = { x: -1000, y: -1000 };
+    let animationId = 0;
+    let time = 0;
+    let resizeTimeout: number | null = null;
+
+    // Local non-null refs for nested functions
+    const cvs = canvas;
+    const context = ctx;
+
+    function initParticles(width: number, height: number) {
+      particles.length = 0;
+      const count = isMobile ? CONFIG.mobileParticleCount : CONFIG.particleCount;
+      for (let i = 0; i < count; i++) {
+        particles.push(
+          createParticle(width, height, CONFIG.colors.particles, CONFIG.colors.glow, CONFIG.sizes)
+        );
+      }
     }
-    particlesRef.current = particles;
-  }, []);
 
-  const animate = useCallback(
-    (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-      ctx.clearRect(0, 0, width, height);
+    function resize() {
+      const rect = cvs.getBoundingClientRect();
+      cvs.width = rect.width * dpr;
+      cvs.height = rect.height * dpr;
+      context.scale(dpr, dpr);
+      initParticles(rect.width, rect.height);
+    }
 
-      // Subtle radial ambient glow (dark pink tint)
-      const bgGrad = ctx.createRadialGradient(
+    resize();
+
+    function animate() {
+      const rect = cvs.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+
+      context.clearRect(0, 0, width, height);
+
+      const bgGrad = context.createRadialGradient(
         width * 0.3,
         height * 0.3,
         0,
@@ -179,17 +207,12 @@ export default function AmbientBackground() {
       bgGrad.addColorStop(0, 'rgba(255, 45, 120, 0.012)');
       bgGrad.addColorStop(0.5, 'rgba(194, 24, 91, 0.006)');
       bgGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, width, height);
+      context.fillStyle = bgGrad;
+      context.fillRect(0, 0, width, height);
 
-      timeRef.current += 1;
-      const time = timeRef.current;
-      const particles = particlesRef.current;
-      const mouse = mouseRef.current;
+      time += 1;
 
-      // Update particles
       for (const p of particles) {
-        // Mouse repulsion
         const mdx = p.x - mouse.x;
         const mdy = p.y - mouse.y;
         const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
@@ -205,28 +228,23 @@ export default function AmbientBackground() {
         p.vx *= 0.995;
         p.vy *= 0.995;
 
-        // Gentle drift back toward base
         p.vx += (p.baseX - p.x) * 0.0003;
         p.vy += (p.baseY - p.y) * 0.0003;
 
-        // Random micro-drift for organic feel
         p.vx += (Math.random() - 0.5) * 0.01;
         p.vy += (Math.random() - 0.5) * 0.01;
 
-        // Wrap edges
         const pad = 20;
         if (p.x < -pad) p.x = width + pad;
         if (p.x > width + pad) p.x = -pad;
         if (p.y < -pad) p.y = height + pad;
         if (p.y > height + pad) p.y = -pad;
 
-        // Migrate base for organic flow
         p.baseX += (Math.random() - 0.5) * 0.2;
         p.baseY += (Math.random() - 0.5) * 0.2;
         p.baseX = Math.max(0, Math.min(width, p.baseX));
         p.baseY = Math.max(0, Math.min(height, p.baseY));
 
-        // Opacity pulsing
         p.opacity += p.opacityDirection * 0.003;
         if (p.opacity > 1) {
           p.opacity = 1;
@@ -237,73 +255,50 @@ export default function AmbientBackground() {
         }
       }
 
-      // Draw connections
+      const maxDist = isMobile ? CONFIG.mobileLineDistance : CONFIG.maxLineDistance;
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
-          drawLine(ctx, particles[i], particles[j], CONFIG.maxLineDistance, CONFIG.colors.linesRGB);
+          drawLine(context, particles[i], particles[j], maxDist, CONFIG.colors.linesRGB);
         }
       }
 
-      // Draw particles on top
       for (const p of particles) {
-        drawParticle(ctx, p, time);
+        drawParticle(context, p, time);
       }
 
-      animationRef.current = requestAnimationFrame(() => animate(ctx, width, height));
-    },
-    []
-  );
+      animationId = requestAnimationFrame(animate);
+    }
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d', { alpha: true });
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-      initParticles(rect.width, rect.height);
-    };
-
-    resize();
+    animate();
 
     const resizeObserver = new ResizeObserver(() => {
-      resize();
+      if (resizeTimeout !== null) clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(resize, 200);
     });
-    resizeObserver.observe(canvas.parentElement || document.body);
+    resizeObserver.observe(cvs.parentElement || document.body);
 
-    // Mouse tracking
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouseRef.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
-    };
+    function handleMouseMove(e: MouseEvent) {
+      const rect = cvs.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+    }
 
-    const handleMouseLeave = () => {
-      mouseRef.current = { x: -1000, y: -1000 };
-    };
+    function handleMouseLeave() {
+      mouse.x = -1000;
+      mouse.y = -1000;
+    }
 
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseleave', handleMouseLeave);
-
-    const rect = canvas.getBoundingClientRect();
-    animate(ctx, rect.width, rect.height);
+    cvs.addEventListener('mousemove', handleMouseMove);
+    cvs.addEventListener('mouseleave', handleMouseLeave);
 
     return () => {
-      cancelAnimationFrame(animationRef.current);
+      cancelAnimationFrame(animationId);
+      if (resizeTimeout !== null) clearTimeout(resizeTimeout);
       resizeObserver.disconnect();
-      canvas.removeEventListener('mousemove', handleMouseMove);
-      canvas.removeEventListener('mouseleave', handleMouseLeave);
+      cvs.removeEventListener('mousemove', handleMouseMove);
+      cvs.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [initParticles, animate]);
+  }, []);
 
   return (
     <canvas
