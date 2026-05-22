@@ -1,4 +1,4 @@
-const API_BASE = '';  // Use Next.js rewrite proxy (no CORS)
+export const API_BASE = 'https://deaddrop-qon2.onrender.com';
 
 export interface CreateDropRequest {
   ciphertext: string;
