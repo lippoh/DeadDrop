@@ -168,7 +168,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 p-8 text-center text-[10px] font-mono text-white/20 tracking-[0.3em] uppercase">
+      <footer className="relative z-10 p-8 text-center text-[8px] md:text-[10px] font-mono text-white/20 tracking-[0.15em] md:tracking-[0.3em] uppercase">
         No logs. No recovery. Zero-knowledge.
       </footer>
     </main>
