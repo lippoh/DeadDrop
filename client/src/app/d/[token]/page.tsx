@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ChangeEvent, KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,8 +47,8 @@ const EMBER_PARTICLES = Array.from({ length: 40 }, (_, i) => ({
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function ReadDropPage({ params }: { params: { token: string } }) {
-  const { token } = params;
+export default function ReadDropPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params);
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [drop, setDrop] = useState<GetDropResponse | null>(null);
   const [key, setKey] = useState("");
