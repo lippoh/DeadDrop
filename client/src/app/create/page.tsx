@@ -64,14 +64,14 @@ export default function CreateDropPage() {
   };
 
   return (
-    <main className="min-h-screen bg-void-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <main className="min-h-screen bg-void-950 flex flex-col items-center justify-center p-4 pt-20 md:pt-4 relative overflow-hidden">
 
       {/* Absolute Return Button */}
       {!isEncrypting && !resultLink && (
-        <button
-          onClick={() => router.push('/')}
-          className="absolute top-8 left-8 text-white/40 hover:text-accent transition-colors flex items-center gap-3 text-[10px] tracking-[0.3em] font-display uppercase group z-50"
-        >
+          <button
+            onClick={() => router.push('/')}
+            className="absolute top-6 left-4 md:top-8 md:left-8 text-white/40 hover:text-accent transition-colors flex items-center gap-3 text-[10px] tracking-[0.3em] font-display uppercase group z-50"
+          >
           <motion.span
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="group-hover:-translate-x-1"
@@ -130,7 +130,7 @@ export default function CreateDropPage() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Enter sensitive data..."
-                className="relative w-full h-72 bg-void-900 border border-white/5 text-white/80 p-8 font-mono text-sm leading-relaxed resize-none focus:outline-none focus:border-accent/40 transition-colors font-light"
+                className="relative w-full h-56 md:h-72 bg-void-900 border border-white/5 text-white/80 p-8 font-mono text-sm leading-relaxed resize-none focus:outline-none focus:border-accent/40 transition-colors font-light"
               />
             </div>
 
@@ -252,7 +252,7 @@ function ResultView({ link, encryptionKey }: { link: string; encryptionKey: stri
       initial={{ scale: 0.95, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className="glass-panel p-12 flex flex-col gap-8 text-center border-white/5"
+      className="glass-panel p-6 md:p-12 flex flex-col gap-6 md:gap-8 text-center border-white/5"
     >
       {/* Icon */}
       <div className="w-16 h-16 mx-auto rounded-full border border-green-500/30 bg-green-500/10 flex items-center justify-center">
