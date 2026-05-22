@@ -1,65 +1,154 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import AnimatedButton from "@/components/AnimatedButton";
+import Tilt from "react-parallax-tilt";
+
+// ─── Particle Background (replaces Background3D) ─────────────────────────
+const AmbientBackground = dynamic(
+  () => import("@/components/background/AmbientBackground"),
+  { ssr: false }
+);
+const GradientOrbs = dynamic(
+  () => import("@/components/background/GradientOrbs"),
+  { ssr: false }
+);
+
+// Awwwards-Style Perfectly Seamless Infinite Marquee
+const InfiniteMarquee = () => {
+  const marqueeText = "ZERO KNOWLEDGE • EPHEMERAL • ZERO KNOWLEDGE • EPHEMERAL • ZERO KNOWLEDGE • EPHEMERAL • ";
+  
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="absolute top-1/2 left-0 w-full overflow-hidden opacity-[0.02] pointer-events-none -translate-y-1/2 flex z-0">
+      <motion.div
+        animate={{ x: ["0%", "-50%"] }}
+        transition={{ repeat: Infinity, ease: "linear", duration: 100 }}
+        className="flex w-max whitespace-nowrap font-display font-black text-[200px] leading-none uppercase tracking-tighter"
+      >
+        <span>{marqueeText.repeat(2)}</span>
+        <span>{marqueeText.repeat(2)}</span>
+      </motion.div>
     </div>
+  );
+};
+
+export default function LandingPage() {
+  const router = useRouter();
+
+  const steps = [
+    { title: "01. Write", desc: "Draft your payload in memory. No drafts saved. No cache. No database logs." },
+    { title: "02. Encrypt", desc: "AES-256-GCM locks it in your browser. The server remains permanently blind." },
+    { title: "03. Burn", desc: "Read once. Destroyed cryptographically and physically from existence." },
+  ];
+
+  const titleText = "DeadDrop".split("");
+
+  return (
+    <main className="relative min-h-screen flex flex-col justify-between overflow-hidden bg-void-950">
+      
+      {/* ── Animated Background Layers ── */}
+      <GradientOrbs />
+      <AmbientBackground />
+      <InfiniteMarquee />
+
+      {/* Header */}
+      <header className="relative z-10 p-8 flex justify-between items-center">
+        <div className="font-display font-light tracking-[0.4em] text-white/40 text-xs">
+          SYS.DEADDROP
+        </div>
+        <div className="flex gap-3 items-center text-xs font-mono text-white/40 tracking-widest">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> E2E ACTIVE
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 mt-12">
+        <div className="text-center flex flex-col items-center">
+          
+          <div className="relative mb-8 flex justify-center overflow-hidden">
+            <h1 className="text-6xl md:text-[9rem] font-display font-light tracking-widest uppercase relative z-10 text-white mix-blend-screen flex">
+              {titleText.map((letter, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ y: 150, opacity: 0, rotate: 10 }}
+                  animate={{ y: 0, opacity: 1, rotate: 0 }}
+                  transition={{ 
+                    duration: 1, 
+                    ease: [0.16, 1, 0.3, 1], 
+                    delay: index * 0.08 
+                  }}
+                  className="inline-block"
+                >
+                  {letter}
+                </motion.span>
+              ))}
+            </h1>
+            <h1 className="text-6xl md:text-[9rem] font-display font-light tracking-widest uppercase absolute inset-0 text-accent blur-[25px] opacity-30 flex justify-center pointer-events-none">
+              {titleText.map((letter, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 2, delay: 1 + index * 0.05 }}
+                  className="inline-block"
+                >
+                  {letter}
+                </motion.span>
+              ))}
+            </h1>
+          </div>
+          
+          <div className="overflow-hidden mb-16">
+            <motion.p 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.8, duration: 1, ease: "easeOut" }}
+              className="text-sm md:text-lg text-white/50 font-sans font-light tracking-[0.4em] uppercase"
+            >
+              Speak. <span className="text-white mx-2">Once.</span> <span className="text-accent text-glow">Burn.</span>
+            </motion.p>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1.5, duration: 1 }}
+          >
+            <AnimatedButton onClick={() => router.push("/create")}>
+              Initiate Drop
+            </AnimatedButton>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* How it Works - Immersive Stagger */}
+      <section className="relative z-10 w-full max-w-6xl mx-auto pb-32 px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+        {steps.map((step, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 40, filter: "blur(10px)" }}
+            whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ delay: i * 0.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="group"
+          >
+            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} scale={1.02} transitionSpeed={2500} glareEnable glareMaxOpacity={0.15}>
+              <div className="glass-panel p-10 h-full flex flex-col gap-6 border border-white/5 hover:border-accent/30 transition-colors duration-700 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                <h3 className="font-display text-sm text-accent tracking-[0.2em]">{step.title}</h3>
+                <p className="font-sans text-white/40 leading-relaxed text-sm font-light">{step.desc}</p>
+              </div>
+            </Tilt>
+          </motion.div>
+        ))}
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 p-8 text-center text-[10px] font-mono text-white/20 tracking-[0.3em] uppercase">
+        No logs. No recovery. Zero-knowledge.
+      </footer>
+    </main>
   );
 }

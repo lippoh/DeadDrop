@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import type { ChangeEvent, KeyboardEvent } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback, ChangeEvent, KeyboardEvent } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Eye, EyeOff, Flame, Loader2, AlertTriangle, Shield, ArrowLeft } from "lucide-react";
 import { decryptMessage } from "@/lib/crypto";
 import { getDrop, readAndBurnDrop } from "@/lib/api";
 import type { GetDropResponse } from "@/lib/api";
+import AnimatedButton from "@/components/AnimatedButton";
 
 // ─── States ──────────────────────────────────────────────────────────────────
 
@@ -19,43 +19,42 @@ type ViewState =
   | "burning"       // Burn animation playing
   | "burned"        // Message destroyed
   | "not_found"     // Drop doesn't exist or expired
-  | "error";        // Something went wrong
+  | "error"        // Something went wrong
 
-// ─── Module-level particles (avoids hydration mismatch from Math.random) ─────
+const createBackgroundParticles = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    duration: 3 + Math.random() * 4,
+    delay: Math.random() * 3,
+  }));
 
-const PARTICLES = Array.from({ length: 12 }, (_, i) => ({
-  id: i,
-  left: `${(i * 37 + 13) % 97}%`,
-  top: `${(i * 53 + 7) % 91}%`,
-  dur: 3 + (i * 7 % 4),
-  delay: (i * 11 % 3),
-}));
-
-const EMBER_PARTICLES = Array.from({ length: 40 }, (_, i) => ({
-  id: i,
-  left: `${30 + (i * 17 % 40)}%`,
-  bottom: `${15 + (i * 13 % 20)}%`,
-  size: 2 + (i * 3 % 5),
-  color: ["#FF2D78", "#FF6B9D", "#F50057", "#C2185B"][i % 4],
-  glowSize: 6 + (i * 7 % 10),
-  rise: 250 + (i * 23 % 300),
-  drift: (i * 17 % 120) - 60,
-  dur: 2 + (i * 11 % 2),
-  delay: (i * 13 % 15) / 10,
-}));
-
-// ─── Component ───────────────────────────────────────────────────────────────
+const createEmberParticles = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    id: i,
+    left: `${30 + Math.random() * 40}%`,
+    bottom: `${15 + Math.random() * 20}%`,
+    width: 2 + Math.random() * 5,
+    height: 2 + Math.random() * 5,
+    backgroundColor: ["#FF2D78", "#FF6B9D", "#F50057", "#C2185B"][i % 4],
+    boxShadow: `0 0 ${6 + Math.random() * 10}px #FF2D78`,
+    y: -250 - Math.random() * 300,
+    x: (Math.random() - 0.5) * 120,
+    duration: 2 + Math.random() * 2,
+    delay: Math.random() * 1.5,
+  }));
 
 export default function ReadDropPage({ params }: { params: { token: string } }) {
-  const { token } = params;
+  const token = params.token;
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [drop, setDrop] = useState<GetDropResponse | null>(null);
   const [key, setKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [decryptedMessage, setDecryptedMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const burnTimerRef = useRef<number | null>(null);
-  const burnedTimerRef = useRef<number | null>(null);
+  const [backgroundParticles] = useState(() => createBackgroundParticles(12));
+  const [emberParticles] = useState(() => createEmberParticles(40));
 
   // ── Fetch the drop on mount ──
 
@@ -72,15 +71,6 @@ export default function ReadDropPage({ params }: { params: { token: string } }) 
       }
     }
     fetch();
-
-    return () => {
-      if (burnTimerRef.current !== null) {
-        window.clearTimeout(burnTimerRef.current);
-      }
-      if (burnedTimerRef.current !== null) {
-        window.clearTimeout(burnedTimerRef.current);
-      }
-    };
   }, [token]);
 
   // ── Decrypt ──
@@ -91,46 +81,33 @@ export default function ReadDropPage({ params }: { params: { token: string } }) 
     setError(null);
 
     try {
-      const encryptedPayload = await readAndBurnDrop(token, key.trim());
-      const plaintext = await decryptMessage(
-        encryptedPayload.ciphertext,
-        key.trim(),
-        encryptedPayload.iv,
-        encryptedPayload.salt
-      );
-
+      const response = await readAndBurnDrop(token, key.trim());
+      const plaintext = await decryptMessage(response.ciphertext, key.trim(), response.iv, response.salt);
       setDecryptedMessage(plaintext);
       setViewState("revealed");
 
-      if (burnTimerRef.current !== null) {
-        window.clearTimeout(burnTimerRef.current);
-      }
-      if (burnedTimerRef.current !== null) {
-        window.clearTimeout(burnedTimerRef.current);
-      }
-
-      burnTimerRef.current = window.setTimeout(() => {
+      // Auto-burn after a short delay so user can see the message
+      setTimeout(() => {
         setViewState("burning");
-        burnedTimerRef.current = window.setTimeout(() => setViewState("burned"), 2500);
+        setTimeout(() => setViewState("burned"), 2500);
       }, 3000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Wrong key. Decryption failed — please check and try again.";
-      setError(message);
+    } catch {
+      setError("Wrong key. The decryption failed — please check and try again.");
       setViewState("enter_key");
     }
   }, [drop, key, token]);
 
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-16 bg-void-950 overflow-hidden">
-      {/* Background particles (module-level — no Math.random in render) */}
+      {/* Background particles */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden opacity-20">
-        {PARTICLES.map((p) => (
+        {backgroundParticles.map((particle) => (
           <motion.div
-            key={p.id}
+            key={particle.id}
             className="absolute w-1 h-1 rounded-full bg-accent"
-            style={{ left: p.left, top: p.top }}
+            style={{ left: particle.left, top: particle.top }}
             animate={{ opacity: [0.1, 0.4, 0.1], y: [0, -25, 0] }}
-            transition={{ duration: p.dur, repeat: Infinity, delay: p.delay }}
+            transition={{ duration: particle.duration, repeat: Infinity, delay: particle.delay }}
           />
         ))}
       </div>
@@ -212,14 +189,10 @@ export default function ReadDropPage({ params }: { params: { token: string } }) 
               </div>
 
               <div className="flex justify-center">
-                <button
-                  onClick={handleDecrypt}
-                  disabled={!key.trim()}
-                  className="inline-flex items-center gap-2 px-8 py-3 bg-accent/10 border border-accent/30 text-accent rounded-xl text-sm font-mono tracking-wider hover:bg-accent/20 hover:border-accent/50 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
+                <AnimatedButton onClick={handleDecrypt} disabled={!key.trim()}>
                   <Shield size={16} />
                   Decrypt Message
-                </button>
+                </AnimatedButton>
               </div>
             </motion.div>
           )}
@@ -290,28 +263,28 @@ export default function ReadDropPage({ params }: { params: { token: string } }) 
             >
               {/* Ember particles rising */}
               <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                {EMBER_PARTICLES.map((p) => (
+                {emberParticles.map((ember) => (
                   <motion.div
-                    key={p.id}
+                    key={ember.id}
                     className="absolute rounded-full"
                     style={{
-                      left: p.left,
-                      bottom: p.bottom,
-                      width: p.size,
-                      height: p.size,
-                      backgroundColor: p.color,
-                      boxShadow: `0 0 ${p.glowSize}px #FF2D78`,
+                      left: ember.left,
+                      bottom: ember.bottom,
+                      width: ember.width,
+                      height: ember.height,
+                      backgroundColor: ember.backgroundColor,
+                      boxShadow: ember.boxShadow,
                     }}
                     initial={{ opacity: 0, y: 0, scale: 0 }}
                     animate={{
                       opacity: [0, 1, 0.8, 0],
-                      y: [0, -p.rise],
-                      x: [0, p.drift],
+                      y: [0, ember.y],
+                      x: [0, ember.x],
                       scale: [0, 1.2, 0.5, 0],
                     }}
                     transition={{
-                      duration: p.dur,
-                      delay: p.delay,
+                      duration: ember.duration,
+                      delay: ember.delay,
                       ease: "easeOut",
                     }}
                   />

@@ -31,7 +31,6 @@
     "sourceMap": true,
 
     "baseUrl": "./src",
-    "types": ["node"],
 
     "paths": {
       "@/*": ["./src/*"]
