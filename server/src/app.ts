@@ -4,6 +4,7 @@ import cors from 'cors';
 import { env } from './config/env';
 import { deadDropRoutes } from './modules/deaddrops/deaddrops.routes';
 import { errorHandler } from './middleware/error.middleware';
+import { authRoutes } from './modules/auth/auth.routes';
 
 
 export const app = express();
@@ -42,6 +43,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
  
 // Dead Drop API routes
 app.use('/api/drops', deadDropRoutes);
+app.use('/api/auth', authRoutes);
 
 
 // ─── Error Handler (MUST be last) ───
