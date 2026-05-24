@@ -68,12 +68,26 @@ export default function LandingPage() {
       <InfiniteMarquee />
 
       {/* Header */}
-      <header className="relative z-10 p-6 md:p-8 flex justify-between items-center">
+       <header className="relative z-10 p-6 md:p-8 flex justify-between items-center">
         <div className="font-display font-light tracking-[0.4em] text-white/40 text-xs">
           SYS.DEADDROP
         </div>
-        <div className="flex gap-3 items-center text-xs font-mono text-white/40 tracking-widest">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> E2E ACTIVE
+        <div className="flex gap-3 items-center">
+          <div className="hidden sm:flex gap-3 items-center text-xs font-mono text-white/40 tracking-widest mr-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> E2E ACTIVE
+          </div>
+          <button
+            onClick={() => router.push("/login")}
+            className="px-4 py-2 text-xs font-mono tracking-widest text-white/50 hover:text-white border border-white/10 hover:border-white/30 rounded-lg transition-all duration-300"
+          >
+            LOGIN
+          </button>
+          <button
+            onClick={() => router.push("/register")}
+            className="px-4 py-2 text-xs font-mono tracking-widest text-accent border border-accent/30 hover:border-accent/60 rounded-lg hover:bg-accent/5 transition-all duration-300"
+          >
+            REGISTER
+          </button>
         </div>
       </header>
 
@@ -129,9 +143,13 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 1.5, duration: 1 }}
+            className="flex gap-4"
           >
             <AnimatedButton onClick={() => router.push("/create")}>
               Initiate Drop
+            </AnimatedButton>
+            <AnimatedButton onClick={() => router.push("/chat")}>
+              Live Chat
             </AnimatedButton>
           </motion.div>
         </div>

@@ -9,7 +9,9 @@ const envSchema = z.object({
   // Server
   PORT: z.coerce.number().default(5000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  CORS_ORIGIN: z.string()
+  .default("http://localhost:3000,https://dead-drop-iota.vercel.app")
+  .transform((val) => val.split(",")),
 
   // JWT
   JWT_SECRET: z.string().min(32),
