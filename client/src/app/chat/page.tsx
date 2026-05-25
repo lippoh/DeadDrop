@@ -406,10 +406,13 @@ async function handleJoinRoom(roomId: string) {
         } transition-all duration-300 border-r border-zinc-800 flex flex-col`}
       >
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <Shield className="h-5 w-5 text-red-500" />
             <h1 className="font-bold text-lg">DeadDrop</h1>
-          </div>
+          </button>
           <button
             onClick={() => setShowSidebar(false)}
             className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
