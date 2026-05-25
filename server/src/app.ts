@@ -1,10 +1,11 @@
-
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { env } from './config/env';
 import { deadDropRoutes } from './modules/deaddrops/deaddrops.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { authRoutes } from './modules/auth/auth.routes';
+import { roomRoutes } from './modules/rooms/room.routes';
+import { authMiddleware } from './middleware/auth.middleware';
 
 
 export const app = express();
@@ -44,6 +45,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
 // Dead Drop API routes
 app.use('/api/drops', deadDropRoutes);
 app.use('/api/auth', authRoutes);
+
+// Room routes (protected)
+app.use('/api/rooms', authMiddleware, roomRoutes);
 
 
 // ─── Error Handler (MUST be last) ───

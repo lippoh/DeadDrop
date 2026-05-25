@@ -29,7 +29,7 @@ export default function LoginPage() {
       localStorage.setItem("deaddrop_token", data.accessToken);
       localStorage.setItem("deaddrop_refresh", data.refreshToken);
       localStorage.setItem("deaddrop_user", JSON.stringify(data.user));
-      router.push("/"); 
+      router.push("/chat"); 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
