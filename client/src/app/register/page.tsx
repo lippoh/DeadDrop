@@ -9,6 +9,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://deaddrop-qon2.onren
 export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,16 +19,20 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
  
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
     if (username.length < 3) {
       setError("Username must be at least 3 characters");
       return;
     }
+    if (!email.includes("@")) {
+      setError("Please enter a valid email");
+      return;
+    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
       return;
     }
  
@@ -36,7 +41,7 @@ export default function RegisterPage() {
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, email, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Registration failed");
@@ -82,6 +87,20 @@ export default function RegisterPage() {
             className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-3 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
             required
             autoFocus
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-mono text-white/30 tracking-widest uppercase">
+            Email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-3 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
+            required
           />
         </div>
  
