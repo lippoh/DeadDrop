@@ -25,11 +25,11 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
- 
-      // Store token in localStorage
-      localStorage.setItem("dd_token", data.token);
-      localStorage.setItem("dd_user", JSON.stringify(data.user));
-      router.push("/chat");
+
+      localStorage.setItem("deaddrop_token", data.accessToken);
+      localStorage.setItem("deaddrop_refresh", data.refreshToken);
+      localStorage.setItem("deaddrop_user", JSON.stringify(data.user));
+      router.push("/"); 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

@@ -1,7 +1,5 @@
-import dotenv from 'dotenv';
+import "dotenv/config";
 
-dotenv.config();
- 
 import { app } from './app';
 import { env } from './config/env';
 import { startCleanupJob } from './jobs/cleanup.job';
