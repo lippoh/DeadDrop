@@ -230,21 +230,42 @@ export default function ChatPage() {
     });
   }
 
-  async function handleJoinRoom(roomId: string) {
-    if (!token) return;
-    socketClient.emit("room:join", { roomId, token });
-    setActiveRoom(roomId);
-    setMessages([]);
-    if (user) {
-      try {
-        const key = await deriveRoomKey(roomId, user.id);
-        setSharedKey(key);
-      } catch (err) {
-        console.error("Failed to derive room key:", err);
-        setSharedKey(null);
-      }
+async function handleJoinRoom(roomId: string) {
+  if (!token) return;
+
+  // 1. Join via backend API (adds to members + returns room info)
+  try {
+    const res = await fetch(`${API_BASE}/api/rooms/${roomId}/join`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const member = await res.json();
+      // If we got room info back, add to sidebar
+      // Otherwise fetch all rooms
+    }
+    // Refresh room list to show joined room
+    fetchRooms(token);
+  } catch (err) {
+    console.error("Failed to join room:", err);
+  }
+
+  // 2. Join socket room
+  socketClient.emit("room:join", { roomId, token });
+  setActiveRoom(roomId);
+  setMessages([]);
+
+  // 3. Derive shared key
+  if (user) {
+    try {
+      const key = await deriveRoomKey(roomId, user.id);
+      setSharedKey(key);
+    } catch (err) {
+      console.error("Failed to derive room key:", err);
+      setSharedKey(null);
     }
   }
+}
 
   async function handleCreateRoom(roomName: string) {
     if (!token) return;

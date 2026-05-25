@@ -69,22 +69,24 @@ export async function deriveSharedKey(
   );
 }
 
-export async function deriveRoomKey(
-  roomId: string,
-  userId: string
-): Promise<CryptoKey> {
+export async function deriveRoomKey(roomId: string, _userId?: string): Promise<CryptoKey> {
   const encoder = new TextEncoder();
-  const material = await crypto.subtle.importKey(
+  const keyMaterial = await crypto.subtle.importKey(
     "raw",
-    toBuffer(encoder.encode(`${roomId}:${userId}`)),
+    encoder.encode(roomId),  // ← μόνο roomId, όχι userId
     "PBKDF2",
     false,
     ["deriveKey"]
   );
-  const salt = toBuffer(encoder.encode("deaddrop-e2ee-salt-v1"));
+
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-    material,
+    {
+      name: "PBKDF2",
+      salt: encoder.encode("deaddrop-room-key-v1"),
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
     ["encrypt", "decrypt"]
