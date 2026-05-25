@@ -4,18 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Send,
-  Plus,
-  LogOut,
-  Users,
-  Copy,
-  Check,
-  Flame,
-  Loader2,
-  MessageSquare,
-  Shield,
-  Eye,
-  EyeOff,
+  Send, Plus, LogOut, Users, Copy, Check, Flame, Loader2,
+  MessageSquare, Shield, Eye, EyeOff,
 } from "lucide-react";
 import socketClient from "@/lib/socket";
 import {
@@ -51,235 +41,7 @@ interface Room {
   createdAt: string;
 }
 
-// ── Page Component ──
-
-export default function ChatPage() {
-  const router = useRouter();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // State — initialize from localStorage so we avoid setState inside useEffect
-  const [user] = useState<User | null>(() => {
-    if (typeof window === "undefined") return null;
-    const raw = localStorage.getItem("deaddrop_user");
-    return raw ? JSON.parse(raw) : null;
-  });
-
-  const [token] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("deaddrop_token") || "";
-  });
-
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [activeRoom, setActiveRoom] = useState<string | null>(null);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const [sharedKey, setSharedKey] = useState<CryptoKey | null>(null);
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [copiedInvite, setCopiedInvite] = useState(false);
-
-  // ── Helpers (declared BEFORE the useEffect that uses them) ──
-
-  async function fetchRooms(tkn: string) {
-    try {
-      const res = await fetch(`${API_BASE}/api/rooms`, {
-        headers: { Authorization: `Bearer ${tkn}` },
-      });
-      if (res.ok) {
-        const data: Room[] = await res.json();
-        setRooms(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch rooms:", err);
-    }
-  }
-
-  function setupSocketListeners() {
-    socketClient.on("message:new", (msg: Message) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    socketClient.on(
-      "user:joined",
-      (data: { userId: string; username: string }) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `sys-${Date.now()}`,
-            roomId: activeRoom || "",
-            senderId: "system",
-            content: `${data.username} joined the room`,
-            encrypted: false,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      }
-    );
-
-    socketClient.on(
-      "user:left",
-      (data: { userId: string; username: string }) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `sys-${Date.now()}`,
-            roomId: activeRoom || "",
-            senderId: "system",
-            content: `${data.username} left the room`,
-            encrypted: false,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      }
-    );
-
-    socketClient.on("user:online", (data: { userIds: string[] }) => {
-      setOnlineUsers(data.userIds);
-    });
-
-    socketClient.on(
-      "typing:start",
-      (data: { userId: string; isTyping: boolean }) => {
-        if (data.isTyping) {
-          setTypingUsers((prev) =>
-            prev.includes(data.userId) ? prev : [...prev, data.userId]
-          );
-        } else {
-          setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
-        }
-      }
-    );
-
-    socketClient.on(
-      "message:self-destruct",
-      (data: { messageId: string }) => {
-        setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
-      }
-    );
-  }
-
-  // ── Init effect (socket + rooms) ──
-
-  useEffect(() => {
-    if (!token || !user) {
-      router.replace("/login");
-      return;
-    }
-
-    socketClient.connect(token);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchRooms(token);
-    setupSocketListeners();
-
-    return () => {
-      socketClient.disconnect();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Auto-scroll ──
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // ── Handlers ──
-
-  async function handleCreateRoom(roomName: string) {
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_BASE}/api/rooms`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: roomName }),
-      });
-      if (res.ok) {
-        const room: Room = await res.json();
-        setRooms((prev) => [...prev, room]);
-        setActiveRoom(room.id);
-        setMessages([]);
-      }
-    } catch (err) {
-      console.error("Failed to create room:", err);
-    }
-  }
-
-  async function handleJoinRoom(roomId: string) {
-    if (!token) return;
-    socketClient.emit("room:join", { roomId, token });
-    setActiveRoom(roomId);
-    setMessages([]);
-    if (user) {
-      const key = await deriveRoomKey(roomId, user.id);
-      setSharedKey(key);
-    }
-  }
-
-  async function handleSendMessage(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newMessage.trim() || !activeRoom || !sharedKey || !token) return;
-
-    let content = newMessage;
-    let iv: string | undefined;
-
-    try {
-      const result = await encryptChatMessage(sharedKey, newMessage);
-      content = result.ciphertext;
-      iv = result.iv;
-    } catch (err) {
-      console.error("Encryption failed, sending plaintext:", err);
-    }
-
-    socketClient.emit("message:send", {
-      roomId: activeRoom,
-      content,
-      encrypted: !!iv,
-      iv,
-      selfDestruct: null,
-      token,
-    });
-
-    setNewMessage("");
-    socketClient.emit("typing:stop", { roomId: activeRoom, token });
-  }
-
-  function handleTyping() {
-    if (!activeRoom || !token) return;
-    socketClient.emit("typing:start", { roomId: activeRoom, token });
-
-    // Stop typing after 2s of inactivity
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(() => {
-      socketClient.emit("typing:stop", { roomId: activeRoom, token });
-    }, 2000);
-  }
-
-  function handleLogout() {
-    localStorage.removeItem("deaddrop_token");
-    localStorage.removeItem("deaddrop_user");
-    socketClient.disconnect();
-    router.replace("/login");
-  }
-
-  async function handleCopyInvite() {
-    if (!activeRoom) return;
-    try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/chat?join=${activeRoom}`
-      );
-      setCopiedInvite(true);
-      setTimeout(() => setCopiedInvite(false), 2000);
-    } catch {
-      console.error("Failed to copy invite link");
-    }
-  }
-
-  // ── Decrypted Text (handles async decryption) ──
+// ── Decrypted Text Component ──
 
 function DecryptedText({
   msg,
@@ -292,7 +54,6 @@ function DecryptedText({
 
   useEffect(() => {
     if (!msg.encrypted || !sharedKey || !msg.iv) {
-      setText(msg.content);
       return;
     }
     let cancelled = false;
@@ -308,240 +69,12 @@ function DecryptedText({
     };
   }, [msg, sharedKey]);
 
-  return <>{text}</>;
-}
+  // Show original content if not encrypted, otherwise decrypted text
+  const displayText = (!msg.encrypted || !sharedKey || !msg.iv) 
+    ? msg.content 
+    : text;
 
-  // ── Redirect guard ──
-
-  if (!user || !token) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <Loader2 className="h-8 w-8 animate-spin text-red-500" />
-      </div>
-    );
-  }
-
-  // ── Render ──
-
-  return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100">
-      {/* ── Sidebar ── */}
-      <aside
-        className={`${
-          showSidebar ? "w-72" : "w-0 overflow-hidden"
-        } transition-all duration-300 border-r border-zinc-800 flex flex-col`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-red-500" />
-            <h1 className="font-bold text-lg">DeadDrop</h1>
-          </div>
-           <button
-            onClick={() => setShowSidebar(false)}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
-            aria-label="Collapse sidebar"
-          >
-            <MessageSquare className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* User info */}
-        <div className="p-4 border-b border-zinc-800">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-zinc-400">
-              Logged in as{" "}
-              <span className="text-zinc-100 font-medium">{user.username}</span>
-            </span>
-            <button
-              onClick={handleLogout}
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
-              title="Logout"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Create room */}
-        <CreateRoomButton onCreate={handleCreateRoom} />
-
-        {/* Room list */}
-        <div className="flex-1 overflow-y-auto p-2">
-          {rooms.length === 0 && (
-            <p className="text-zinc-500 text-sm text-center mt-4">
-              No rooms yet
-            </p>
-          )}
-          {rooms.map((room) => (
-            <button
-              key={room.id}
-              onClick={() => handleJoinRoom(room.id)}
-              className={`w-full text-left px-3 py-2 rounded-md mb-1 transition-colors ${
-                activeRoom === room.id
-                  ? "bg-red-500/20 text-red-400"
-                  : "hover:bg-zinc-800 text-zinc-300"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Flame className="h-4 w-4 shrink-0" />
-                <span className="text-sm truncate">{room.name}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Online users */}
-        {onlineUsers.length > 0 && (
-          <div className="p-3 border-t border-zinc-800">
-            <div className="flex items-center gap-1 text-xs text-zinc-500">
-              <Users className="h-3 w-3" />
-              <span>{onlineUsers.length} online</span>
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {/* ── Main chat area ── */}
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Chat header */}
-        {activeRoom ? (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
-            <div className="flex items-center gap-3">
-              {!showSidebar && (
-                <button
-                  onClick={() => setShowSidebar(true)}
-                  className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
-                  aria-label="Open sidebar"
-                >
-                  <MessageSquare className="h-5 w-5" />
-                </button>
-              )}
-              <Eye className="h-5 w-5 text-red-500" />
-              <h2 className="font-semibold truncate">
-                {rooms.find((r) => r.id === activeRoom)?.name || "Chat"}
-              </h2>
-               {sharedKey && (
-                <span title="E2E Encrypted">
-                  <EyeOff
-                    className="h-4 w-4 text-green-500 shrink-0"
-                  />
-                </span>
-              )}
-            </div>
-            <button
-              onClick={handleCopyInvite}
-              className="flex items-center gap-1 px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors shrink-0"
-            >
-              {copiedInvite ? (
-                <Check className="h-4 w-4 text-green-400" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              {copiedInvite ? "Copied!" : "Invite"}
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center px-4 py-3 border-b border-zinc-800 shrink-0">
-            {!showSidebar && (
-              <button
-                onClick={() => setShowSidebar(true)}
-                className="mr-3 p-1 rounded hover:bg-zinc-800 text-zinc-400"
-                aria-label="Open sidebar"
-              >
-                <MessageSquare className="h-5 w-5" />
-              </button>
-            )}
-            <span className="text-zinc-500">
-              Select or create a room to start chatting
-            </span>
-          </div>
-        )}
-
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {!activeRoom && (
-            <div className="flex flex-col items-center justify-center h-full text-zinc-500">
-              <Flame className="h-12 w-12 mb-3 opacity-30" />
-              <p className="text-lg font-medium">Welcome to DeadDrop</p>
-              <p className="text-sm">Create or join a room to begin</p>
-            </div>
-          )}
-
-          <AnimatePresence>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className={`flex ${
-                  msg.senderId === user.id
-                    ? "justify-end"
-                    : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                    msg.senderId === "system"
-                      ? "bg-zinc-800/50 text-zinc-500 text-xs italic self-center"
-                      : msg.senderId === user.id
-                      ? "bg-red-500/20 text-red-100"
-                      : "bg-zinc-800 text-zinc-100"
-                  }`}
-                >
-                  <p className="text-sm wrap-break-word whitespace-pre-wrap">
-                    {DecryptedText({ msg, sharedKey })}
-                  </p>
-                  <p className="text-xs opacity-50 mt-1">
-                    {new Date(msg.createdAt).toLocaleTimeString()}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Typing indicator */}
-        {typingUsers.length > 0 && activeRoom && (
-          <div className="px-4 py-1 text-xs text-zinc-500 animate-pulse shrink-0">
-            Someone is typing...
-          </div>
-        )}
-
-        {/* Message input */}
-        {activeRoom && (
-          <form
-            onSubmit={handleSendMessage}
-            className="flex items-center gap-2 p-4 border-t border-zinc-800 shrink-0"
-          >
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => {
-                setNewMessage(e.target.value);
-                handleTyping();
-              }}
-              placeholder={
-                sharedKey ? "Send encrypted message..." : "Send message..."
-              }
-              className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-red-500/50 placeholder:text-zinc-600"
-            />
-             <button
-              type="submit"
-              disabled={!newMessage.trim()}
-              className="p-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
-              aria-label="Send message"
-            >
-              <Send className="h-5 w-5" />
-            </button>
-          </form>
-        )}
-      </main>
-    </div>
-  );
+  return <>{displayText}</>;
 }
 
 // ── Create Room Sub-component ──
@@ -592,6 +125,461 @@ function CreateRoomButton({
           Create Room
         </button>
       )}
+    </div>
+  );
+}
+
+// ── Page Component ──
+
+export default function ChatPage() {
+  const router = useRouter();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [user] = useState<User | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = localStorage.getItem("deaddrop_user");
+    return raw ? JSON.parse(raw) : null;
+  });
+
+  const [token] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("deaddrop_token") || "";
+  });
+
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [activeRoom, setActiveRoom] = useState<string | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [sharedKey, setSharedKey] = useState<CryptoKey | null>(null);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [copiedInvite, setCopiedInvite] = useState(false);
+
+  // ── Handlers ──
+
+  async function fetchRooms(tkn: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/rooms`, {
+        headers: { Authorization: `Bearer ${tkn}` },
+      });
+      if (res.ok) {
+        const data: Room[] = await res.json();
+        setRooms(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch rooms:", err);
+    }
+  }
+
+  function setupSocketListeners() {
+    socketClient.on("message:new", (msg) => {
+      setMessages((prev) => [...prev, msg as Message]);
+    });
+
+    socketClient.on("user:joined", (data) => {
+      const d = data as { userId: string; username: string };
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `sys-${Date.now()}`,
+          roomId: activeRoom || "",
+          senderId: "system",
+          content: `${d.username} joined the room`,
+          encrypted: false,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    });
+
+    socketClient.on("user:left", (data) => {
+      const d = data as { userId: string; username: string };
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `sys-${Date.now()}`,
+          roomId: activeRoom || "",
+          senderId: "system",
+          content: `${d.username} left the room`,
+          encrypted: false,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    });
+
+    socketClient.on("user:online", (data) => {
+      const d = data as { userIds: string[] };
+      setOnlineUsers(d.userIds);
+    });
+
+    socketClient.on("typing:start", (data) => {
+      const d = data as { userId: string; isTyping: boolean };
+      if (d.isTyping) {
+        setTypingUsers((prev) =>
+          prev.includes(d.userId) ? prev : [...prev, d.userId]
+        );
+      } else {
+        setTypingUsers((prev) => prev.filter((id) => id !== d.userId));
+      }
+    });
+
+    socketClient.on("message:self-destruct", (data) => {
+      const d = data as { messageId: string };
+      setMessages((prev) => prev.filter((m) => m.id !== d.messageId));
+    });
+  }
+
+  async function handleJoinRoom(roomId: string) {
+    if (!token) return;
+    socketClient.emit("room:join", { roomId, token });
+    setActiveRoom(roomId);
+    setMessages([]);
+    if (user) {
+      try {
+        const key = await deriveRoomKey(roomId, user.id);
+        setSharedKey(key);
+      } catch (err) {
+        console.error("Failed to derive room key:", err);
+        setSharedKey(null);
+      }
+    }
+  }
+
+  async function handleCreateRoom(roomName: string) {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/rooms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: roomName }),
+      });
+      if (res.ok) {
+        const room: Room = await res.json();
+        setRooms((prev) => [...prev, room]);
+        handleJoinRoom(room.id);
+      }
+    } catch (err) {
+      console.error("Failed to create room:", err);
+    }
+  }
+
+  async function handleSendMessage(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newMessage.trim() || !activeRoom || !token) return;
+
+    let content = newMessage;
+    let encrypted = false;
+    let iv: string | undefined;
+
+    if (sharedKey) {
+      try {
+        const result = await encryptChatMessage(sharedKey, newMessage);
+        content = result.ciphertext;
+        iv = result.iv;
+        encrypted = true;
+      } catch (err) {
+        console.error("Encryption failed, sending plaintext:", err);
+      }
+    }
+
+    socketClient.emit("message:send", {
+      roomId: activeRoom,
+      content,
+      encrypted,
+      iv,
+      selfDestruct: null,
+      token,
+    });
+
+    setNewMessage("");
+    socketClient.emit("typing:stop", { roomId: activeRoom, token });
+  }
+
+  function handleTyping() {
+    if (!activeRoom || !token) return;
+    socketClient.emit("typing:start", { roomId: activeRoom, token });
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      socketClient.emit("typing:stop", { roomId: activeRoom, token });
+    }, 2000);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("deaddrop_token");
+    localStorage.removeItem("deaddrop_user");
+    socketClient.disconnect();
+    router.replace("/login");
+  }
+
+  async function handleCopyInvite() {
+    if (!activeRoom) return;
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/chat?join=${activeRoom}`
+      );
+      setCopiedInvite(true);
+      setTimeout(() => setCopiedInvite(false), 2000);
+    } catch {
+      console.error("Failed to copy invite link");
+    }
+  }
+
+ // ── Init effect ──
+
+  useEffect(() => {
+    if (!token || !user) {
+      router.replace("/login");
+      return;
+    }
+
+    socketClient.connect(token);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchRooms(token);
+    setupSocketListeners();
+
+    return () => {
+      socketClient.disconnect();
+    };
+  }, []);
+
+  // ── Handle ?join=roomId URL param ──
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinRoomId = params.get("join");
+    if (joinRoomId && token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      handleJoinRoom(joinRoomId);
+      window.history.replaceState({}, "", "/chat");
+    }
+  }, []);
+
+  // ── Auto-scroll ──
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // ── Redirect guard ──
+
+  if (!user || !token) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+      </div>
+    );
+  }
+
+  // ── Render ──
+
+  return (
+    <div className="flex h-screen bg-zinc-950 text-zinc-100">
+      {/* ── Sidebar ── */}
+      <aside
+        className={`${
+          showSidebar ? "w-72" : "w-0 overflow-hidden"
+        } transition-all duration-300 border-r border-zinc-800 flex flex-col`}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-red-500" />
+            <h1 className="font-bold text-lg">DeadDrop</h1>
+          </div>
+          <button
+            onClick={() => setShowSidebar(false)}
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
+            aria-label="Collapse sidebar"
+          >
+            <MessageSquare className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-4 border-b border-zinc-800">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-zinc-400">
+              Logged in as{" "}
+              <span className="text-zinc-100 font-medium">{user.username}</span>
+            </span>
+            <button
+              onClick={handleLogout}
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <CreateRoomButton onCreate={handleCreateRoom} />
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {rooms.length === 0 && (
+            <p className="text-zinc-500 text-sm text-center mt-4">
+              No rooms yet
+            </p>
+          )}
+          {rooms.map((room) => (
+            <button
+              key={room.id}
+              onClick={() => handleJoinRoom(room.id)}
+              className={`w-full text-left px-3 py-2 rounded-md mb-1 transition-colors ${
+                activeRoom === room.id
+                  ? "bg-red-500/20 text-red-400"
+                  : "hover:bg-zinc-800 text-zinc-300"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Flame className="h-4 w-4 shrink-0" />
+                <span className="text-sm truncate">{room.name}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {onlineUsers.length > 0 && (
+          <div className="p-3 border-t border-zinc-800">
+            <div className="flex items-center gap-1 text-xs text-zinc-500">
+              <Users className="h-3 w-3" />
+              <span>{onlineUsers.length} online</span>
+            </div>
+          </div>
+        )}
+      </aside>
+
+      {/* ── Main chat area ── */}
+      <main className="flex-1 flex flex-col min-w-0">
+        {activeRoom ? (
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
+            <div className="flex items-center gap-3">
+              {!showSidebar && (
+                <button
+                  onClick={() => setShowSidebar(true)}
+                  className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
+                  aria-label="Open sidebar"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                </button>
+              )}
+              <Eye className="h-5 w-5 text-red-500" />
+              <h2 className="font-semibold truncate">
+                {rooms.find((r) => r.id === activeRoom)?.name || "Chat"}
+              </h2>
+              {sharedKey && (
+                <span title="E2E Encrypted">
+                  <EyeOff className="h-4 w-4 text-green-500 shrink-0" />
+                </span>
+              )}
+            </div>
+            <button
+              onClick={handleCopyInvite}
+              className="flex items-center gap-1 px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors shrink-0"
+            >
+              {copiedInvite ? (
+                <Check className="h-4 w-4 text-green-400" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              {copiedInvite ? "Copied!" : "Invite"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center px-4 py-3 border-b border-zinc-800 shrink-0">
+            {!showSidebar && (
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="mr-3 p-1 rounded hover:bg-zinc-800 text-zinc-400"
+                aria-label="Open sidebar"
+              >
+                <MessageSquare className="h-5 w-5" />
+              </button>
+            )}
+            <span className="text-zinc-500">
+              Select or create a room to begin
+            </span>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {!activeRoom && (
+            <div className="flex flex-col items-center justify-center h-full text-zinc-500">
+              <Flame className="h-12 w-12 mb-3 opacity-30" />
+              <p className="text-lg font-medium">Welcome to DeadDrop</p>
+              <p className="text-sm">Create or join a room to begin</p>
+            </div>
+          )}
+
+          <AnimatePresence>
+            {messages.map((msg) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className={`flex ${
+                  msg.senderId === user.id ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                    msg.senderId === "system"
+                      ? "bg-zinc-800/50 text-zinc-500 text-xs italic self-center"
+                      : msg.senderId === user.id
+                      ? "bg-red-500/20 text-red-100"
+                      : "bg-zinc-800 text-zinc-100"
+                  }`}
+                >
+                  <p className="text-sm wrap-break-word whitespace-pre-wrap">
+                    <DecryptedText msg={msg} sharedKey={sharedKey} />
+                  </p>
+                  <p className="text-xs opacity-50 mt-1">
+                    {new Date(msg.createdAt).toLocaleTimeString()}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {typingUsers.length > 0 && activeRoom && (
+          <div className="px-4 py-1 text-xs text-zinc-500 animate-pulse shrink-0">
+            Someone is typing...
+          </div>
+        )}
+
+        {activeRoom && (
+          <form
+            onSubmit={handleSendMessage}
+            className="flex items-center gap-2 p-4 border-t border-zinc-800 shrink-0"
+          >
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                handleTyping();
+              }}
+              placeholder={
+                sharedKey ? "Send encrypted message..." : "Send message..."
+              }
+              className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-red-500/50 placeholder:text-zinc-600"
+            />
+            <button
+              type="submit"
+              disabled={!newMessage.trim()}
+              className="p-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+              aria-label="Send message"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </form>
+        )}
+      </main>
     </div>
   );
 }
