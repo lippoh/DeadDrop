@@ -46,6 +46,8 @@ model User {
   password    String
   createdAt   DateTime     @default(now())
   memberships RoomMember[]
+
+  @@map("users")
 }
 
 model Room {
