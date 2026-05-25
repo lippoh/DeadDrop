@@ -1,9 +1,8 @@
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../../lib/prisma';
 import { env } from '../../config/env';
 
-const prisma = new PrismaClient();
 
 export async function findUserByEmail(email: string) {
   return prisma.user.findUnique({ where: { email } });
