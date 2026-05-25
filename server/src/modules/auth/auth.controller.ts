@@ -38,14 +38,14 @@ export async function register(req: Request, res: Response) {
 
 export async function login(req: Request, res: Response) {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required' });
+    if (!username || !password) {
+      res.status(400).json({ error: 'Username and password are required' });
       return;
     }
 
-    const user = await authService.findUserByEmail(email);
+    const user = await authService.findUserByUsername(username);
     if (!user) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
