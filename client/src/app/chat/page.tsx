@@ -397,7 +397,7 @@ async function handleJoinRoom(roomId: string) {
   // ── Render ──
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100">
+    <div className="flex h-dvh bg-zinc-950 text-zinc-100">
       {/* ── Sidebar ── */}
       {/* Mobile backdrop — only visible when sidebar is open */}
       {showSidebar && (
@@ -416,7 +416,7 @@ async function handleJoinRoom(roomId: string) {
             onClick={() => router.push("/")}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
           >
-            <Shield className="h-5 w-5 text-red-500" />
+            <Shield className="h-5 w-5" style={{ color: '#ef4670' }} />
             <h1 className="font-bold text-lg">DeadDrop</h1>
           </button>
           <button
@@ -481,7 +481,7 @@ async function handleJoinRoom(roomId: string) {
       </aside>
 
       {/* ── Main chat area ── */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 min-h-0">
             {activeRoom ? (
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
         <div className="flex items-center gap-3">
@@ -493,7 +493,7 @@ async function handleJoinRoom(roomId: string) {
           >
             <MessageSquare className="h-5 w-5" />
           </button>
-          <Eye className="h-5 w-5 text-red-500" />
+          <Eye className="h-5 w-5 #ef4670" />
           <h2 className="font-semibold truncate">
             {rooms.find((r) => r.id === activeRoom)?.name || "Chat"}
           </h2>
