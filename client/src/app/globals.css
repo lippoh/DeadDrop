@@ -66,3 +66,35 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #ef4670;
 }
+
+/* Custom Minimalist Scrollbar — desktop only */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #030303;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1F1F1F;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #ef4670;
+  }
+}
+
+/* Hide scrollbar completely on mobile */
+@media (max-width: 767px) {
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Safe area for notched phones */
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
