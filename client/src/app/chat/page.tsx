@@ -14,8 +14,7 @@ import {
   deriveRoomKey,
 } from "@/lib/e2ee";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "https://deaddrop-qon2.onrender.com";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 // ── Types ──
 
