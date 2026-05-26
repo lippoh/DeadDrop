@@ -15,7 +15,11 @@ export const app = express();
 
 // CORS: allow requests from the frontend
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: [
+    "http://localhost:3000",
+    "https://dead-drop-iota.vercel.app",
+    /.+\.vercel\.app$/,
+  ],
   methods: ['GET', 'POST', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));

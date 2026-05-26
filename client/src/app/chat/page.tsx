@@ -399,11 +399,13 @@ async function handleJoinRoom(roomId: string) {
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100">
       {/* ── Sidebar ── */}
-      {/* Mobile backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 z-40 md:hidden"
-        onClick={() => setShowSidebar(false)}
-      />
+      {/* Mobile backdrop — only visible when sidebar is open */}
+      {showSidebar && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
       <aside
       className={`fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col md:relative md:z-auto transition-transform duration-300 ${
         showSidebar ? "translate-x-0" : "-translate-x-full"
