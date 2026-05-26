@@ -408,7 +408,7 @@ async function handleJoinRoom(roomId: string) {
       )}
       <aside
       className={`fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col md:relative md:z-auto transition-transform duration-300 ${
-        showSidebar ? "translate-x-0" : "-translate-x-full"
+      showSidebar ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       }`}
       >
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
@@ -421,7 +421,7 @@ async function handleJoinRoom(roomId: string) {
           </button>
           <button
             onClick={() => setShowSidebar(false)}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden" 
             aria-label="Collapse sidebar"
           >
             <MessageSquare className="h-5 w-5" />
@@ -502,8 +502,26 @@ async function handleJoinRoom(roomId: string) {
               <EyeOff className="h-4 w-4 text-green-500 shrink-0" />
             </span>
           )}
+                </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopyInvite}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-400 transition-colors"
+            title="Copy invite link"
+          >
+            {copiedInvite ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                Invite
+              </>
+            )}
+          </button>
         </div>
-        {/* ... Invite button stays ... */}
       </div>
     ) : (
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
