@@ -397,7 +397,7 @@ async function handleJoinRoom(roomId: string) {
   // ── Render ──
 
   return (
-    <div className="flex h-dvh bg-zinc-950 text-zinc-100">
+    <div className="fixed inset-0 flex bg-zinc-950 text-zinc-100 overflow-hidden">
       {/* ── Sidebar ── */}
       {/* Mobile backdrop — only visible when sidebar is open */}
       {showSidebar && (

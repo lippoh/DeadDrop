@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+html, body {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
 @theme {
   /* The Void (Backgrounds) */
   --color-void-950: #030303;

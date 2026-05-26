@@ -1,11 +1,12 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import AnimatedButton from "@/components/AnimatedButton";
 import Tilt from "react-parallax-tilt";
+
 
 // ─── Mobile detection via useSyncExternalStore (React 19 safe) ─────────────
 function useIsMobile(breakpoint = 768) {
@@ -50,6 +51,13 @@ const InfiniteMarquee = () => {
 export default function LandingPage() {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const [user, setUser] = useState<{ id: string; username: string } | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("deaddrop_user");
+     // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (raw) setUser(JSON.parse(raw));
+  }, []);
 
   const steps = [
     { title: "01. Write", desc: "Draft your payload in memory. No drafts saved. No cache. No database logs." },
@@ -76,18 +84,40 @@ export default function LandingPage() {
           <div className="hidden sm:flex gap-3 items-center text-xs font-mono text-white/40 tracking-widest mr-4">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> E2E ACTIVE
           </div>
-          <button
-            onClick={() => router.push("/login")}
-            className="px-4 py-2 text-xs font-mono tracking-widest text-white/50 hover:text-white border border-white/10 hover:border-white/30 rounded-lg transition-all duration-300"
-          >
-            LOGIN
-          </button>
-          <button
-            onClick={() => router.push("/register")}
-            className="px-4 py-2 text-xs font-mono tracking-widest text-accent border border-accent/30 hover:border-accent/60 rounded-lg hover:bg-accent/5 transition-all duration-300"
-          >
-            REGISTER
-          </button>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs font-mono tracking-widest text-white/60">{user.username}</span>
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("deaddrop_token");
+                  localStorage.removeItem("deaddrop_user");
+                  localStorage.removeItem("deaddrop_refresh");
+                  setUser(null);
+                }}
+                className="px-4 py-2 text-xs font-mono tracking-widest text-white/40 hover:text-red-400 border border-white/10 hover:border-red-500/30 rounded-lg transition-all duration-300"
+              >
+                LOGOUT
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => router.push("/login")}
+                className="px-4 py-2 text-xs font-mono tracking-widest text-white/50 hover:text-white border border-white/10 hover:border-white/30 rounded-lg transition-all duration-300"
+              >
+                LOGIN
+              </button>
+              <button
+                onClick={() => router.push("/register")}
+                className="px-4 py-2 text-xs font-mono tracking-widest text-accent border border-accent/30 hover:border-accent/60 rounded-lg hover:bg-accent/5 transition-all duration-300"
+              >
+                REGISTER
+              </button>
+            </>
+          )}
         </div>
       </header>
 
