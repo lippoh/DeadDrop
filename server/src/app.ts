@@ -6,23 +6,49 @@ import { errorHandler } from './middleware/error.middleware';
 import { authRoutes } from './modules/auth/auth.routes';
 import { roomRoutes } from './modules/rooms/room.routes';
 import { authMiddleware } from './middleware/auth.middleware';
+import { authLoginLimiter, authRegisterLimiter } from './middleware/rateLimiter';
 
 
 export const app = express();
 
+
+// ─── CORS ───
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const allowedPatterns = [
+      /^http:\/\/localhost:\d+$/,
+      /^http:\/\/127\.0\.0\.1:\d+$/,
+      /^https:\/\/.*\.vercel\.app$/,
+    ];
+
+    const isAllowed = allowedPatterns.some((pattern) => pattern.test(origin));
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked origin: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options("*", cors(corsOptions));
+
  
 // ─── Middleware ───
-
-// CORS: allow requests from the frontend
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://dead-drop-iota.vercel.app",
-    /.+\.vercel\.app$/,
-  ],
-  methods: ['GET', 'POST', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
 
 // Parse JSON request bodies
 app.use(express.json({ limit: '10mb' }));
@@ -48,6 +74,12 @@ app.get('/api/health', (_req: Request, res: Response) => {
  
 // Dead Drop API routes
 app.use('/api/drops', deadDropRoutes);
+
+// Rate limiting on auth endpoints
+app.use('/api/auth/login', authLoginLimiter);
+app.use('/api/auth/register', authRegisterLimiter);
+
+// Auth routes (after rate limiters)
 app.use('/api/auth', authRoutes);
 
 // Room routes (protected)

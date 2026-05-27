@@ -1,10 +1,12 @@
-export const API_BASE = 'https://deaddrop-qon2.onrender.com';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://deaddrop-qon2.onrender.com';
+
+// ── Types ──
 
 export interface CreateDropRequest {
   ciphertext: string;
   iv: string;
   salt: string;
-   hasPassword: boolean;
+  hasPassword: boolean;
   password: string;
   expiryHours?: number;
 }
@@ -20,6 +22,8 @@ export interface GetDropResponse {
   createdAt: string;
   expiresAt: string;
 }
+
+// ── Error handling ──
 
 class ApiError extends Error {
   status: number;
@@ -45,6 +49,27 @@ async function handleResponse<T>(response: Response): Promise<T> {
   }
   return response.json();
 }
+
+// ── Generic API fetch utility ──
+
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${API_BASE}${path}`;
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  return handleResponse<T>(response);
+}
+
+// ── Dead Drop API ──
 
 export async function createDrop(data: CreateDropRequest): Promise<CreateDropResponse> {
   const response = await fetch(`${API_BASE}/api/drops`, {

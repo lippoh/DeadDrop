@@ -40,22 +40,29 @@ model DeadDrop {
 // ─── Phase 2: User, Room, RoomMember ───
 
 model User {
-  id          String       @id @default(uuid())
-  email       String       @unique
-  username    String       @unique
-  password    String
-  createdAt   DateTime     @default(now())
-  memberships RoomMember[]
+  id             String              @id @default(uuid())
+  username       String              @unique
+  email          String              @unique
+  password       String
+  createdAt      DateTime            @default(now()) @map("created_at")
+  
+  rooms          Room[]
+  roomMemberships RoomMember[]
+  readReceipts   MessageReadReceipt[]
 
   @@map("users")
 }
 
 model Room {
-  id        String   @id @default(uuid())
+  id             String              @id @default(uuid())
   name      String
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  creatorId String   @map("creator_id")
+  creator   User     @relation(fields: [creatorId], references: [id])
   
   members   RoomMember[]
+  messages  Message[]
 
   @@map("rooms")
 }
@@ -72,3 +79,33 @@ model RoomMember {
   @@unique([roomId, userId])
   @@map("room_members")
 }
+
+model Message {
+  id           String              @id @default(uuid())
+  roomId       String
+  senderId     String
+  content      String
+  encrypted    Boolean             @default(false)
+  iv           String?
+  selfDestruct Int?
+  createdAt    DateTime            @default(now())
+
+  room         Room                @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  readReceipts MessageReadReceipt[]
+
+  @@map("messages")
+}
+
+model MessageReadReceipt {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_read_receipts")
+}
+

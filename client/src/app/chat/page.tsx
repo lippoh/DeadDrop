@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, Plus, LogOut, Users, Copy, Check, Flame, Loader2,
-  MessageSquare, Shield, Eye, EyeOff,
+  MessageSquare, Shield, Eye, EyeOff, X, Settings,
 } from "lucide-react";
 import socketClient from "@/lib/socket";
 import {
@@ -13,6 +13,12 @@ import {
   decryptChatMessage,
   deriveRoomKey,
 } from "@/lib/e2ee";
+import { BurnAnimation } from "@/components/chat/BurnAnimation";
+import ImageUploadButton from "@/components/chat/ImageUploadButton";
+import { extractImageAndCaption } from "@/lib/image-utils";
+import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import { RoomSettingsPanel } from "@/components/chat/RoomSettingsPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -37,43 +43,88 @@ interface Message {
 interface Room {
   id: string;
   name: string;
+  creatorId?: string;
   createdAt: string;
 }
 
-// ── Decrypted Text Component ──
+interface RoomMember {
+  userId: string;
+  user: { id: string; username: string };
+}
 
-function DecryptedText({
+// ── Message Content Renderer ──
+
+function MessageContent({ content }: { content: string }) {
+  const parsed = extractImageAndCaption(content);
+
+  if (parsed) {
+    return (
+      <>
+        <img
+          src={parsed.image}
+          alt={parsed.caption || "Shared image"}
+          className="max-w-full rounded-lg mb-1 cursor-pointer"
+          style={{ maxHeight: 300 }}
+          onClick={(e) => {
+            const target = e.target as HTMLImageElement;
+            if (target.style.maxHeight === "none") {
+              target.style.maxHeight = "300px";
+            } else {
+              target.style.maxHeight = "none";
+            }
+          }}
+        />
+        {parsed.caption && (
+          <p className="text-sm whitespace-pre-wrap break-words">
+            {parsed.caption}
+          </p>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
+  );
+}
+
+// ── Decrypted Message Bubble ──
+
+function DecryptedMessage({
   msg,
   sharedKey,
 }: {
   msg: Message;
   sharedKey: CryptoKey | null;
 }) {
-  const [text, setText] = useState(msg.content);
+  const [decrypted, setDecrypted] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!msg.encrypted || !sharedKey || !msg.iv) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDecrypted(msg.content);
       return;
     }
+
     let cancelled = false;
     decryptChatMessage(sharedKey, msg.content, msg.iv)
-      .then((decrypted) => {
-        if (!cancelled) setText(decrypted);
+      .then((text) => {
+        if (!cancelled) setDecrypted(text);
       })
       .catch(() => {
-        if (!cancelled) setText("[Failed to decrypt]");
+        if (!cancelled) setFailed(true);
       });
+
     return () => {
       cancelled = true;
     };
   }, [msg, sharedKey]);
 
-  // Show original content if not encrypted, otherwise decrypted text
-  const displayText = (!msg.encrypted || !sharedKey || !msg.iv) 
-    ? msg.content 
-    : text;
+  if (failed) return <p className="text-sm text-red-400 italic">[Failed to decrypt]</p>;
+  if (!decrypted) return <p className="text-sm text-zinc-500">Decrypting...</p>;
 
-  return <>{displayText}</>;
+  return <MessageContent content={decrypted} />;
 }
 
 // ── Create Room Sub-component ──
@@ -148,13 +199,18 @@ export default function ChatPage() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [sharedKey, setSharedKey] = useState<CryptoKey | null>(null);
-  const [showSidebar, setShowSidebar] = useState(false);  // ← false by default on mobile
+  const [showSidebar, setShowSidebar] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [burningMessages, setBurningMessages] = useState<Set<string>>(new Set());
+
+  // Room settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [roomMembers, setRoomMembers] = useState<{ id: string; username: string }[]>([]);
 
   // ── Handlers ──
 
@@ -169,6 +225,20 @@ export default function ChatPage() {
       }
     } catch (err) {
       console.error("Failed to fetch rooms:", err);
+    }
+  }
+
+  async function fetchRoomMembers(roomId: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/rooms/${roomId}/members`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data: RoomMember[] = await res.json();
+        setRoomMembers(data.map((m) => ({ id: m.user.id, username: m.user.username })));
+      }
+    } catch (err) {
+      console.error("Failed to fetch room members:", err);
     }
   }
 
@@ -212,59 +282,78 @@ export default function ChatPage() {
       setOnlineUsers(d.userIds);
     });
 
-    socketClient.on("typing:start", (data) => {
-      const d = data as { userId: string; isTyping: boolean };
-      if (d.isTyping) {
-        setTypingUsers((prev) =>
-          prev.includes(d.userId) ? prev : [...prev, d.userId]
-        );
-      } else {
-        setTypingUsers((prev) => prev.filter((id) => id !== d.userId));
+    socketClient.on("message:self-destruct", (data) => {
+      const d = data as { messageId: string };
+      setBurningMessages((prev) => new Set(prev).add(d.messageId));
+    });
+
+    // Room settings socket events
+    socketClient.on("member:kicked", (data) => {
+      const d = data as { roomId: string; kickedUserId: string };
+
+      // If I was kicked, leave the room
+      if (user && d.kickedUserId === user.id) {
+        socketClient.emit("room:leave", { roomId: d.roomId });
+        setActiveRoom(null);
+        setMessages([]);
+        setRoomMembers([]);
+        setRooms((prev) => prev.filter((r) => r.id !== d.roomId));
+      }
+
+      // If someone else was kicked, update members list
+      if (d.roomId === activeRoom) {
+        fetchRoomMembers(d.roomId);
       }
     });
 
-    socketClient.on("message:self-destruct", (data) => {
-      const d = data as { messageId: string };
-      setMessages((prev) => prev.filter((m) => m.id !== d.messageId));
+    socketClient.on("room:deleted", (data) => {
+      const d = data as { roomId: string };
+
+      if (d.roomId === activeRoom) {
+        socketClient.emit("room:leave", { roomId: d.roomId });
+        setActiveRoom(null);
+        setMessages([]);
+        setRoomMembers([]);
+        setShowSettings(false);
+      }
+
+      setRooms((prev) => prev.filter((r) => r.id !== d.roomId));
     });
   }
 
-async function handleJoinRoom(roomId: string) {
-  if (!token) return;
+  async function handleJoinRoom(roomId: string) {
+    if (!token) return;
 
-  // 1. Join via backend API (adds to members + returns room info)
-  try {
-    const res = await fetch(`${API_BASE}/api/rooms/${roomId}/join`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      const member = await res.json();
-      // If we got room info back, add to sidebar
-      // Otherwise fetch all rooms
-    }
-    // Refresh room list to show joined room
-    fetchRooms(token);
-  } catch (err) {
-    console.error("Failed to join room:", err);
-  }
-
-  // 2. Join socket room
-  socketClient.emit("room:join", { roomId, token });
-  setActiveRoom(roomId);
-  setMessages([]);
-
-  // 3. Derive shared key
-  if (user) {
     try {
-      const key = await deriveRoomKey(roomId, user.id);
-      setSharedKey(key);
+      const res = await fetch(`${API_BASE}/api/rooms/${roomId}/join`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        await res.json();
+      }
+      fetchRooms(token);
     } catch (err) {
-      console.error("Failed to derive room key:", err);
-      setSharedKey(null);
+      console.error("Failed to join room:", err);
+    }
+
+    socketClient.emit("room:join", { roomId, token });
+    setActiveRoom(roomId);
+    setMessages([]);
+    setShowSettings(false);
+
+    fetchRoomMembers(roomId);
+
+    if (user) {
+      try {
+        const key = await deriveRoomKey(roomId, user.id);
+        setSharedKey(key);
+      } catch (err) {
+        console.error("Failed to derive room key:", err);
+        setSharedKey(null);
+      }
     }
   }
-}
 
   async function handleCreateRoom(roomName: string) {
     if (!token) return;
@@ -289,16 +378,25 @@ async function handleJoinRoom(roomId: string) {
 
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!newMessage.trim() || !activeRoom || !token) return;
+    if ((!newMessage.trim() && !pendingImage) || !activeRoom || !token) return;
 
-    let content = newMessage;
+    let content = newMessage.trim();
+
+    if (pendingImage) {
+      content = pendingImage + (content ? "\n" + content : "");
+      setPendingImage(null);
+    }
+
+    if (!content) return;
+
     let encrypted = false;
     let iv: string | undefined;
+    let finalContent = content;
 
     if (sharedKey) {
       try {
-        const result = await encryptChatMessage(sharedKey, newMessage);
-        content = result.ciphertext;
+        const result = await encryptChatMessage(sharedKey, content);
+        finalContent = result.ciphertext;
         iv = result.iv;
         encrypted = true;
       } catch (err) {
@@ -308,7 +406,7 @@ async function handleJoinRoom(roomId: string) {
 
     socketClient.emit("message:send", {
       roomId: activeRoom,
-      content,
+      content: finalContent,
       encrypted,
       iv,
       selfDestruct: null,
@@ -317,6 +415,14 @@ async function handleJoinRoom(roomId: string) {
 
     setNewMessage("");
     socketClient.emit("typing:stop", { roomId: activeRoom, token });
+  }
+
+  function handleImageSelected(base64: string, _fileName: string) {
+    if (base64) {
+      setPendingImage(base64);
+    } else {
+      setPendingImage(null);
+    }
   }
 
   function handleTyping() {
@@ -348,7 +454,54 @@ async function handleJoinRoom(roomId: string) {
     }
   }
 
- // ── Init effect ──
+  // ── Room Settings Handlers ──
+
+  async function handleRenameRoom(newName: string) {
+    if (!activeRoom || !token) return;
+    const res = await fetch(`${API_BASE}/api/rooms/${activeRoom}/name`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: newName }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setRooms((prev) =>
+        prev.map((r) => (r.id === activeRoom ? { ...r, name: updated.name } : r))
+      );
+    }
+  }
+
+  async function handleDeleteRoom() {
+    if (!activeRoom || !token) return;
+    const res = await fetch(`${API_BASE}/api/rooms/${activeRoom}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      socketClient.emit("room:leave", { roomId: activeRoom });
+      setActiveRoom(null);
+      setMessages([]);
+      setRoomMembers([]);
+      setRooms((prev) => prev.filter((r) => r.id !== activeRoom));
+      setShowSettings(false);
+    }
+  }
+
+  async function handleKickMember(userId: string) {
+    if (!activeRoom || !token) return;
+    const res = await fetch(`${API_BASE}/api/rooms/${activeRoom}/members/${userId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setRoomMembers((prev) => prev.filter((m) => m.id !== userId));
+    }
+  }
+
+  // ── Init effect ──
 
   useEffect(() => {
     if (!token || !user) {
@@ -394,12 +547,14 @@ async function handleJoinRoom(roomId: string) {
     );
   }
 
+  const activeRoomData = rooms.find((r) => r.id === activeRoom);
+  const isCreator = activeRoomData?.creatorId === user.id;
+
   // ── Render ──
 
   return (
     <div className="fixed inset-0 flex bg-zinc-950 text-zinc-100 overflow-hidden">
       {/* ── Sidebar ── */}
-      {/* Mobile backdrop — only visible when sidebar is open */}
       {showSidebar && (
         <div
           className="fixed inset-0 bg-black/60 z-40 md:hidden"
@@ -407,9 +562,9 @@ async function handleJoinRoom(roomId: string) {
         />
       )}
       <aside
-      className={`fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col md:relative md:z-auto transition-transform duration-300 ${
-      showSidebar ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-      }`}
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col md:relative md:z-auto transition-transform duration-300 ${
+          showSidebar ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
       >
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <button
@@ -421,28 +576,29 @@ async function handleJoinRoom(roomId: string) {
           </button>
           <button
             onClick={() => setShowSidebar(false)}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden" 
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden"
             aria-label="Collapse sidebar"
           >
             <MessageSquare className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-4 border-b border-zinc-800">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-zinc-400">
-              Logged in as{" "}
-              <span className="text-zinc-100 font-medium">{user.username}</span>
-            </span>
-            <button
-              onClick={handleLogout}
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
-              title="Logout"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="flex items-center justify-between">
+        <span className="text-sm text-zinc-400">
+          Logged in as{" "}
+          <span className="text-zinc-100 font-medium">{user.username}</span>
+        </span>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button
+            onClick={handleLogout}
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
+      </div>
 
         <CreateRoomButton onCreate={handleCreateRoom} />
 
@@ -482,63 +638,77 @@ async function handleJoinRoom(roomId: string) {
 
       {/* ── Main chat area ── */}
       <main className="flex-1 flex flex-col min-w-0 min-h-0">
-            {activeRoom ? (
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
-        <div className="flex items-center gap-3">
-          {/* Hamburger for mobile */}
-          <button
-            onClick={() => setShowSidebar(!showSidebar)}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden"
-            aria-label="Toggle sidebar"
-          >
-            <MessageSquare className="h-5 w-5" />
-          </button>
-          <Eye className="h-5 w-5 #ef4670" />
-          <h2 className="font-semibold truncate">
-            {rooms.find((r) => r.id === activeRoom)?.name || "Chat"}
-          </h2>
-          {sharedKey && (
-            <span title="E2E Encrypted">
-              <EyeOff className="h-4 w-4 text-green-500 shrink-0" />
+        {activeRoom ? (
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden"
+                aria-label="Toggle sidebar"
+              >
+                <MessageSquare className="h-5 w-5" />
+              </button>
+              <Eye className="h-5 w-5" style={{ color: '#ef4670' }} />
+              <h2 className="font-semibold truncate">
+                {activeRoomData?.name || "Chat"}
+              </h2>
+              {sharedKey && (
+                <span title="E2E Encrypted">
+                  <EyeOff className="h-4 w-4 text-green-500 shrink-0" />
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyInvite}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-400 transition-colors"
+                title="Copy invite link"
+              >
+                {copiedInvite ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    Invite
+                  </>
+                )}
+              </button>
+              {/* Settings button */}
+              <button
+                onClick={() => {
+                  if (showSettings) {
+                    setShowSettings(false);
+                  } else {
+                    fetchRoomMembers(activeRoom);
+                    setShowSettings(true);
+                  }
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-400 transition-colors"
+                title="Room settings"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden"
+              aria-label="Toggle sidebar"
+            >
+              <MessageSquare className="h-5 w-5" />
+            </button>
+            <span className="text-zinc-500">
+              Select or create a room to begin
             </span>
-          )}
-                </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyInvite}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-400 transition-colors"
-            title="Copy invite link"
-          >
-            {copiedInvite ? (
-              <>
-                <Check className="h-3.5 w-3.5" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-3.5 w-3.5" />
-                Invite
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    ) : (
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
-        <button
-          onClick={() => setShowSidebar(!showSidebar)}
-          className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden"
-          aria-label="Toggle sidebar"
-        >
-          <MessageSquare className="h-5 w-5" />
-        </button>
-        <span className="text-zinc-500">
-          Select or create a room to begin
-        </span>
-      </div>
-    )}
+          </div>
+        )}
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 relative">
           {!activeRoom && (
             <div className="flex flex-col items-center justify-center h-full text-zinc-500">
               <Flame className="h-12 w-12 mb-3 opacity-30" />
@@ -548,71 +718,152 @@ async function handleJoinRoom(roomId: string) {
           )}
 
           <AnimatePresence>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className={`flex ${
-                  msg.senderId === user.id ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                    msg.senderId === "system"
-                      ? "bg-zinc-800/50 text-zinc-500 text-xs italic self-center"
-                      : msg.senderId === user.id
-                      ? "bg-red-500/20 text-red-100"
-                      : "bg-zinc-800 text-zinc-100"
+            {messages.map((msg) => {
+              const isBurning = burningMessages.has(msg.id);
+
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`flex ${
+                    msg.senderId === user.id ? "justify-end" : "justify-start"
                   }`}
                 >
-                  <p className="text-sm wrap-break-word whitespace-pre-wrap">
-                    <DecryptedText msg={msg} sharedKey={sharedKey} />
-                  </p>
-                  <p className="text-xs opacity-50 mt-1">
-                    {new Date(msg.createdAt).toLocaleTimeString()}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="relative">
+                    <div
+                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                        msg.senderId === "system"
+                          ? "bg-zinc-800/50 text-zinc-500 text-xs italic self-center"
+                          : msg.senderId === user.id
+                          ? "bg-red-500/20 text-red-100"
+                          : "bg-zinc-800 text-zinc-100"
+                      }`}
+                    >
+                      {msg.senderId === "system" ? (
+                        <p className="text-xs italic">{msg.content}</p>
+                      ) : (
+                        <DecryptedMessage msg={msg} sharedKey={sharedKey} />
+                      )}
+                      <p className="text-xs opacity-50 mt-1">
+                        {new Date(msg.createdAt).toLocaleTimeString()}
+                        {msg.selfDestruct && (
+                          <span className="ml-2 text-orange-400">
+                            🔥 {msg.selfDestruct}s
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Burn animation overlay */}
+                    <BurnAnimation
+                      isActive={isBurning}
+                      onComplete={() => {
+                        setBurningMessages((prev) => {
+                          const next = new Set(prev);
+                          next.delete(msg.id);
+                          return next;
+                        });
+                        setMessages((prev) =>
+                          prev.filter((m) => m.id !== msg.id)
+                        );
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
 
           <div ref={messagesEndRef} />
         </div>
 
-        {typingUsers.length > 0 && activeRoom && (
-          <div className="px-4 py-1 text-xs text-zinc-500 animate-pulse shrink-0">
-            Someone is typing...
-          </div>
-        )}
+        <TypingIndicator
+          socket={socketClient}
+          currentRoomId={activeRoom || ""}
+          currentUsername={user?.username || ""}
+        />
 
         {activeRoom && (
           <form
             onSubmit={handleSendMessage}
-            className="flex items-center gap-2 p-4 border-t border-zinc-800 shrink-0"
+            className="flex flex-col gap-2 p-4 border-t border-zinc-800 shrink-0"
           >
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => {
-                setNewMessage(e.target.value);
-                handleTyping();
-              }}
-              placeholder={
-                sharedKey ? "Send encrypted message..." : "Send message..."
-              }
-              className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-red-500/50 placeholder:text-zinc-600"
-            />
-            <button
-              type="submit"
-              disabled={!newMessage.trim()}
-              className="p-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
-              aria-label="Send message"
-            >
-              <Send className="h-5 w-5" />
-            </button>
+            {/* Pending image preview */}
+            {pendingImage && (
+              <div className="relative inline-block self-start">
+                <img
+                  src={pendingImage}
+                  alt="Pending image"
+                  className="max-h-32 rounded-lg border border-zinc-700"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPendingImage(null)}
+                  className="absolute -top-2 -right-2 p-1 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-red-400 transition-colors"
+                  aria-label="Remove image"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Input row */}
+            <div className="flex items-center gap-2">
+              <ImageUploadButton onImageSelected={handleImageSelected} />
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  handleTyping();
+                }}
+                placeholder={
+                  sharedKey
+                    ? "Send encrypted message..."
+                    : "Send message..."
+                }
+                className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-red-500/50 placeholder:text-zinc-600"
+              />
+              <button
+                type="submit"
+                disabled={!newMessage.trim() && !pendingImage}
+                className="p-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+                aria-label="Send message"
+              >
+                <Send className="h-5 w-5" />
+              </button>
+            </div>
           </form>
+        )}
+
+        {/* ── Room Settings Slide-out ── */}
+        {showSettings && activeRoom && activeRoomData && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/40 z-50"
+              onClick={() => setShowSettings(false)}
+            />
+            <div className="fixed top-0 right-0 bottom-0 z-50 flex items-start justify-end p-4">
+              <div className="mt-16">
+                <RoomSettingsPanel
+                  room={{
+                    id: activeRoomData.id,
+                    name: activeRoomData.name,
+                    creatorId: activeRoomData.creatorId || user.id,
+                  }}
+                  members={roomMembers}
+                  currentUserId={user.id}
+                  isCreator={isCreator}
+                  onRename={handleRenameRoom}
+                  onDelete={handleDeleteRoom}
+                  onKick={handleKickMember}
+                  onClose={() => setShowSettings(false)}
+                />
+              </div>
+            </div>
+          </>
         )}
       </main>
     </div>

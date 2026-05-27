@@ -1,5 +1,53 @@
 @import "tailwindcss";
 
+/* ── Theme Variables ── */
+
+:root {
+  --background: #0B1220;
+  --foreground: #F8FAFC;
+  --card: #111827;
+  --card-foreground: #F8FAFC;
+  --primary: #EF4670;
+  --primary-foreground: #FFFFFF;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --border: #1E293B;
+  --input: #1E293B;
+  --destructive: #EF4444;
+  --ring: #EF4670;
+}
+
+.light {
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --destructive: #DC2626;
+  --ring: #EF4670;
+}
+
+.dark {
+  --background: #0B1220;
+  --foreground: #F8FAFC;
+  --card: #111827;
+  --card-foreground: #F8FAFC;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --border: #1E293B;
+  --input: #1E293B;
+  --destructive: #EF4444;
+  --ring: #EF4670;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
 @theme {
   /* The Void (Backgrounds) */
   --color-void-950: #030303;

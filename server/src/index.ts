@@ -6,7 +6,9 @@ import { app } from './app';
 import { env } from './config/env';
 import { startCleanupJob } from './jobs/cleanup.job';
 import { authMiddleware } from './middleware/auth.middleware';
+import { prisma } from './lib/prisma';
 import jwt from 'jsonwebtoken';
+import { setIO } from './lib/socket';
 
 const PORT = env.PORT;
 
@@ -21,6 +23,7 @@ const io = new Server(httpServer, {
     credentials: true,
   },
 });
+setIO(io);
 
 // ─── Socket Auth ───
 
@@ -43,7 +46,8 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   const userId = (socket as any).userId;
-  console.log(`[socket] user ${userId} connected`);
+  const username = (socket as any).username || 'Anonymous';
+  console.log(`[socket] user ${username} (${userId}) connected`);
 
   socket.on('room:join', async (data: { roomId: string; token: string }) => {
     socket.join(data.roomId);
@@ -77,15 +81,47 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing:start', (data: { roomId: string }) => {
-    socket.to(data.roomId).emit('typing:start', { userId, isTyping: true });
+    socket.to(data.roomId).emit('typing:start', { userId, username, isTyping: true, roomId: data.roomId });
   });
 
   socket.on('typing:stop', (data: { roomId: string }) => {
-    socket.to(data.roomId).emit('typing:stop', { userId, isTyping: false });
+    socket.to(data.roomId).emit('typing:stop', { userId, username, isTyping: false, roomId: data.roomId });
+  });
+
+  // ─── Message Read Receipts ───
+
+  socket.on('message:read', async (data: { messageIds: string[] }) => {
+    if (!userId) return;
+
+    for (const messageId of data.messageIds) {
+      await prisma.messageReadReceipt.upsert({
+        where: {
+          messageId_userId: { messageId, userId },
+        },
+        create: {
+          messageId,
+          userId,
+        },
+        update: {
+          readAt: new Date(),
+        },
+      });
+    }
+
+    // Notify the room that these messages were read
+    io.to(socket.rooms.size > 0 ? Array.from(socket.rooms)[1] : '').emit('message:read:confirmed', {
+      messageIds: data.messageIds,
+      readBy: userId,
+    });
   });
 
   socket.on('disconnect', (reason: string) => {
-    console.log(`[socket] user ${userId} disconnected: ${reason}`);
+    // Stop typing indicator in all rooms
+    const rooms = Array.from(socket.rooms);
+    rooms.forEach((roomId) => {
+      socket.to(roomId).emit('typing:stop', { userId, username, isTyping: false });
+    });
+    console.log(`[socket] user ${username} (${userId}) disconnected: ${reason}`);
   });
 });
 

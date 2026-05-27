@@ -1,19 +1,18 @@
 /**
- * next.config.ts — Add API proxy to avoid CORS issues in development.
- * In production (Vercel), you should either:
- *   a) Configure CORS on the Express backend, OR
- *   b) Use environment variables with NEXT_PUBLIC_API_URL
+ * next.config.ts — API proxy configuration.
+ * In development: proxies /api/* to the Express backend.
+ * In Vercel production: uses the deployment URL from env vars,
+ * or falls back to the Render URL.
  */
 
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Proxy /api/* requests to your Express backend (avoids CORS in dev)
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "https://deaddrop-qon2.onrender.com/api/:path*",
+        destination: `${process.env.NEXT_PUBLIC_API_URL || "https://deaddrop-qon2.onrender.com"}/api/:path*`,
       },
     ];
   },
