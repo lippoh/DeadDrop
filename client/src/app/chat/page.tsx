@@ -548,7 +548,7 @@ export default function ChatPage() {
   }
 
   const activeRoomData = rooms.find((r) => r.id === activeRoom);
-  const isCreator = activeRoomData?.creatorId === user.id;
+  const isCreator = !activeRoomData?.creatorId || activeRoomData?.creatorId === user.id;
 
   // ── Render ──
 
