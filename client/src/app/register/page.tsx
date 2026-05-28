@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
  
@@ -63,6 +64,9 @@ export default function RegisterPage() {
     <main className="min-h-screen flex items-center justify-center bg-void-950 px-4">
       <form onSubmit={handleRegister} className="w-full max-w-sm space-y-6">
         <div className="text-center">
+          <div className="flex justify-end mb-2">
+            <ThemeToggle />
+          </div>
           <h1 className="text-2xl font-display tracking-widest uppercase text-white">
             Register
           </h1>

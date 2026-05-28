@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, User, ArrowRight } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
  
@@ -40,7 +41,10 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-void-950 px-4">
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6">
-        <div className="text-center">
+          <div className="text-center">
+          <div className="flex justify-end mb-2">
+            <ThemeToggle />
+          </div>
           <h1 className="text-2xl font-display tracking-widest uppercase text-white">
             Sign In
           </h1>

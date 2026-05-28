@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import AnimatedButton from "@/components/AnimatedButton";
 import Tilt from "react-parallax-tilt";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 
 // ─── Mobile detection via useSyncExternalStore (React 19 safe) ─────────────
@@ -81,6 +82,8 @@ export default function LandingPage() {
           SYS.DEADDROP
         </div>
         <div className="flex gap-3 items-center">
+           <ThemeToggle />
+          <div className="hidden sm:flex gap-3 items-center text-xs font-mono text-white/40 tracking-widest mr-4"></div>
           <div className="hidden sm:flex gap-3 items-center text-xs font-mono text-white/40 tracking-widest mr-4">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> E2E ACTIVE
           </div>
