@@ -1,61 +1,38 @@
 @import "tailwindcss";
 
-/* ── Theme Variables ── */
+/* Enable class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --background: #0B1220;
+/* ── Theme CSS Variables ── */
+
+:root, .dark {
+  --void-950: #030303;
+  --void-900: #0A0A0A;
+  --void-800: #141414;
+  --void-700: #1F1F1F;
+  --background: #030303;
   --foreground: #F8FAFC;
-  --card: #111827;
-  --card-foreground: #F8FAFC;
-  --primary: #EF4670;
-  --primary-foreground: #FFFFFF;
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
-  --border: #1E293B;
-  --input: #1E293B;
-  --destructive: #EF4444;
-  --ring: #EF4670;
+  --scrollbar-track: #030303;
+  --scrollbar-thumb: #1F1F1F;
 }
 
 .light {
+  --void-950: #FAFAFA;
+  --void-900: #F5F5F5;
+  --void-800: #E5E5E5;
+  --void-700: #D4D4D4;
   --background: #FFFFFF;
   --foreground: #0F172A;
-  --card: #FFFFFF;
-  --card-foreground: #0F172A;
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --destructive: #DC2626;
-  --ring: #EF4670;
-}
-
-.dark {
-  --background: #0B1220;
-  --foreground: #F8FAFC;
-  --card: #111827;
-  --card-foreground: #F8FAFC;
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
-  --border: #1E293B;
-  --input: #1E293B;
-  --destructive: #EF4444;
-  --ring: #EF4670;
-}
-
-body {
-  background-color: var(--background);
-  color: var(--foreground);
+  --scrollbar-track: #F5F5F5;
+  --scrollbar-thumb: #D4D4D4;
 }
 
 @theme {
-  /* The Void (Backgrounds) */
-  --color-void-950: #030303;
-  --color-void-900: #0A0A0A;
-  --color-void-800: #141414;
-  --color-void-700: #1F1F1F;
+  --color-void-950: var(--void-950);
+  --color-void-900: var(--void-900);
+  --color-void-800: var(--void-800);
+  --color-void-700: var(--void-700);
 
-  /* The Single Accent (Cyber Fuchsia/Pink) */
   --color-accent: #ef4670;
   --color-accent-dim: #701A75;
 
@@ -64,6 +41,11 @@ body {
 
   --animate-glitch: glitch 3s cubic-bezier(.25, .46, .45, .94) both infinite;
   --animate-shimmer: shimmer 2s linear infinite;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
 @keyframes glitch {
@@ -84,14 +66,12 @@ body {
 @layer base {
   body {
     @apply overflow-x-hidden selection:bg-accent selection:text-void-950;
-    background-color: var(--background);
-    color: var(--foreground);
   }
 }
 
 @layer utilities {
   .glass-panel {
-    @apply bg-void-900/30 backdrop-blur-xl border border-white/5 shadow-2xl;
+    @apply dark:bg-void-900/30 bg-white/60 backdrop-blur-xl dark:border-white/5 border-gray-200 shadow-2xl;
   }
 
   .accent-glow {
@@ -103,48 +83,24 @@ body {
   }
 }
 
-/* Custom Minimalist Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: #030303;
-}
-::-webkit-scrollbar-thumb {
-  background: #1F1F1F;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #ef4670;
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); }
+::-webkit-scrollbar-thumb:hover { background: #ef4670; }
 
-/* Custom Minimalist Scrollbar — desktop only */
 @media (min-width: 768px) {
-  ::-webkit-scrollbar {
-    width: 4px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #030303;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #1F1F1F;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #ef4670;
-  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); }
+  ::-webkit-scrollbar-thumb:hover { background: #ef4670; }
 }
 
-/* Hide scrollbar completely on mobile */
 @media (max-width: 767px) {
-  * {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  *::-webkit-scrollbar {
-    display: none;
-  }
+  * { -ms-overflow-style: none; scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
 }
 
-/* Safe area for notched phones */
 body {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }

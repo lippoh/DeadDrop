@@ -1,5 +1,5 @@
 "use client";
- 
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
@@ -7,7 +7,7 @@ import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
- 
+
 export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
@@ -16,11 +16,11 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
- 
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
- 
+
     if (username.length < 3) {
       setError("Username must be at least 3 characters");
       return;
@@ -37,7 +37,7 @@ export default function RegisterPage() {
       setError("Passwords do not match");
       return;
     }
- 
+
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/auth/register`, {
@@ -47,7 +47,7 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Registration failed");
- 
+
       // Auto-login after registration
       localStorage.setItem("deaddrop_token", data.accessToken);
       localStorage.setItem("deaddrop_refresh", data.refreshToken);
@@ -59,30 +59,30 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
- 
+
   return (
-    <main className="min-h-screen flex items-center justify-center bg-void-950 px-4">
+    <main className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-void-950 px-4">
       <form onSubmit={handleRegister} className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <div className="flex justify-end mb-2">
             <ThemeToggle />
           </div>
-          <h1 className="text-2xl font-display tracking-widest uppercase text-white">
+          <h1 className="text-2xl font-display tracking-widest uppercase text-gray-900 dark:text-white">
             Register
           </h1>
-          <p className="text-sm text-white/40 mt-2">
+          <p className="text-sm text-gray-500 dark:text-white/40 mt-2">
             Create your DeadDrop account
           </p>
         </div>
- 
+
         {error && (
-          <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+          <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 dark:text-red-400 text-sm">
             {error}
           </div>
         )}
- 
+
         <div className="space-y-2">
-          <label className="text-xs font-mono text-white/30 tracking-widest uppercase">
+          <label className="text-xs font-mono text-gray-400 dark:text-white/30 tracking-widest uppercase">
             Username
           </label>
           <input
@@ -90,14 +90,14 @@ export default function RegisterPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Choose a username"
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-3 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
+            className="w-full bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-xl px-5 py-3 text-sm text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
             required
             autoFocus
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-mono text-white/30 tracking-widest uppercase">
+          <label className="text-xs font-mono text-gray-400 dark:text-white/30 tracking-widest uppercase">
             Email
           </label>
           <input
@@ -105,13 +105,13 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="your@email.com"
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-3 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
+            className="w-full bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-xl px-5 py-3 text-sm text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
             required
           />
         </div>
- 
+
         <div className="space-y-2">
-          <label className="text-xs font-mono text-white/30 tracking-widest uppercase">
+          <label className="text-xs font-mono text-gray-400 dark:text-white/30 tracking-widest uppercase">
             Password
           </label>
           <input
@@ -119,14 +119,14 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Min 8 characters"
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-3 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
+            className="w-full bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-xl px-5 py-3 text-sm text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
             required
           />
           <PasswordStrengthMeter password={password} />
         </div>
- 
+
         <div className="space-y-2">
-          <label className="text-xs font-mono text-white/30 tracking-widest uppercase">
+          <label className="text-xs font-mono text-gray-400 dark:text-white/30 tracking-widest uppercase">
             Confirm Password
           </label>
           <input
@@ -134,11 +134,11 @@ export default function RegisterPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Repeat password"
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-3 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
+            className="w-full bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-xl px-5 py-3 text-sm text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
             required
           />
         </div>
- 
+
         <button
           type="submit"
           disabled={loading}
@@ -147,10 +147,13 @@ export default function RegisterPage() {
           {loading ? "Creating account..." : "Create Account"}
           <ArrowRight size={16} />
         </button>
- 
-        <p className="text-center text-xs text-white/30">
+
+        <p className="text-center text-xs text-gray-400 dark:text-white/30">
           Already have an account?{" "}
-          <a href="/login" className="text-accent/60 hover:text-accent transition-colors">
+          <a
+            href="/login"
+            className="text-accent/60 hover:text-accent transition-colors"
+          >
             Sign In
           </a>
         </p>
