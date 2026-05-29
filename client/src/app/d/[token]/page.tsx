@@ -130,7 +130,7 @@ const handleDecrypt = useCallback(async () => {
   }, [drop, key, token]);
 
   return (
-    <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-16 bg-void-950 overflow-hidden">
+    <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-16 bg-gray-50 dark:bg-void-950 overflow-hidden">
       {/* Background particles (module-level — no Math.random in render) */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden opacity-20">
         {PARTICLES.map((p) => (
@@ -189,7 +189,7 @@ const handleDecrypt = useCallback(async () => {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm"
+                  className="flex items-center gap-3 p-4 rounded-xl border border-red-400/30 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm"
                 >
                   <AlertTriangle size={18} />
                   {error}
@@ -212,13 +212,13 @@ const handleDecrypt = useCallback(async () => {
                       }
                     }}
                     placeholder="Paste the encryption key here..."
-                    className="w-full bg-white/3 border border-white/8 rounded-xl px-5 py-4 pr-12 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
+                    className="w-full bg-gray-100 dark:bg-white/3 border border-gray-200 dark:border-white/8 rounded-xl px-5 py-4 pr-12 text-sm text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={() => setShowKey(!showKey)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 hover:text-gray-600 dark:hover:text-white/50 transition-colors"
                   >
                     {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -281,8 +281,8 @@ const handleDecrypt = useCallback(async () => {
                 </motion.p>
               </div>
 
-              <div className="bg-white/3 border border-white/8 rounded-xl p-6 md:p-8">
-                <pre className="whitespace-pre-wrap text-sm md:text-base text-white/90 font-mono leading-relaxed">
+              <div className="bg-gray-100 dark:bg-white/3 border border-gray-200 dark:border-white/8 rounded-xl p-6 md:p-8">
+                <pre className="whitespace-pre-wrap text-sm md:text-base text-gray-900 dark:text-white/90 font-mono leading-relaxed">
                   {decryptedMessage}
                 </pre>
               </div>
@@ -301,7 +301,7 @@ const handleDecrypt = useCallback(async () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-void-950"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50 dark:bg-void-950"
             >
               {/* Ember particles rising */}
               <div className="pointer-events-none absolute inset-0 overflow-hidden">

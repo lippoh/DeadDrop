@@ -14,7 +14,7 @@ export default function AnimatedButton({ children, className, ...props }: Props)
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        "relative px-10 py-4 border border-white/10 text-white font-display uppercase tracking-[0.3em] text-sm transition-all duration-500 font-light overflow-hidden group hover:border-accent/50 hover:shadow-[0_0_30px_rgba(217,70,239,0.15)]",
+        "relative px-10 py-4 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white font-display uppercase tracking-[0.3em] text-sm transition-all duration-500 font-light overflow-hidden group hover:border-accent/50 hover:shadow-[0_0_30px_rgba(217,70,239,0.15)]",
         className
       )}
       {...props}
