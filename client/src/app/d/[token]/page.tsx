@@ -98,9 +98,9 @@ const handleDecrypt = useCallback(async () => {
       // Step 2: Decrypt locally in the browser
       const plaintext = await decryptMessage(
         encryptedPayload.ciphertext,
-        key.trim(),
         encryptedPayload.iv,
-        encryptedPayload.salt
+        encryptedPayload.salt,
+        key.trim()
       );
 
       setDecryptedMessage(plaintext);
@@ -128,7 +128,7 @@ const handleDecrypt = useCallback(async () => {
       setViewState("enter_key");
     }
   }, [drop, key, token]);
-  
+
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-16 bg-void-950 overflow-hidden">
       {/* Background particles (module-level — no Math.random in render) */}
