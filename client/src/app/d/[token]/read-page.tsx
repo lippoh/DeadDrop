@@ -173,7 +173,12 @@ export default function ReadDropPage({ params }: { params: { token: string } }) 
                     type={showKey ? "text" : "password"}
                     value={key}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => { setKey(e.target.value); setError(null); }}
-                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleDecrypt()}
+                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleDecrypt();
+                      }
+                    }}
                     placeholder="Paste the encryption key here..."
                     className="w-full bg-white/3 border border-white/8 rounded-xl px-5 py-4 pr-12 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
                     autoFocus

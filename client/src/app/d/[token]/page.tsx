@@ -197,7 +197,12 @@ export default function ReadDropPage({ params }: { params: Promise<{ token: stri
                     type={showKey ? "text" : "password"}
                     value={key}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => { setKey(e.target.value); setError(null); }}
-                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleDecrypt()}
+                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleDecrypt();
+                      }
+                    }}
                     placeholder="Paste the encryption key here..."
                     className="w-full bg-white/3 border border-white/8 rounded-xl px-5 py-4 pr-12 text-sm text-white/90 placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
                     autoFocus
@@ -214,6 +219,7 @@ export default function ReadDropPage({ params }: { params: Promise<{ token: stri
 
               <div className="flex justify-center">
                 <button
+                  type="button"
                   onClick={handleDecrypt}
                   disabled={!key.trim()}
                   className="inline-flex items-center gap-2 px-8 py-3 bg-accent/10 border border-accent/30 text-accent rounded-xl text-sm font-mono tracking-wider hover:bg-accent/20 hover:border-accent/50 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"

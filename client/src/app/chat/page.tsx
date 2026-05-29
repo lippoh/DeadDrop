@@ -147,7 +147,7 @@ function CreateRoomButton({
   }
 
   return (
-    <div className="p-3 border-b border-zinc-800">
+    <div className="p-3 border-b border-zinc-200 dark:border-zinc-800">
       {showInput ? (
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
@@ -155,7 +155,7 @@ function CreateRoomButton({
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             placeholder="Room name..."
-            className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-red-500/50 placeholder:text-zinc-600"
+            className="flex-1 min-w-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-red-500/50 placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
             autoFocus
           />
           <button
@@ -169,7 +169,7 @@ function CreateRoomButton({
       ) : (
         <button
           onClick={() => setShowInput(true)}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors"
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm text-zinc-700 dark:text-zinc-300 transition-colors"
         >
           <Plus className="h-4 w-4" />
           Create Room
@@ -222,6 +222,11 @@ export default function ChatPage() {
       if (res.ok) {
         const data: Room[] = await res.json();
         setRooms(data);
+      } else if (res.status === 401) {
+        localStorage.removeItem("deaddrop_token");
+        localStorage.removeItem("deaddrop_user");
+        localStorage.removeItem("deaddrop_refresh");
+        router.replace("/login");
       }
     } catch (err) {
       console.error("Failed to fetch rooms:", err);
@@ -287,11 +292,9 @@ export default function ChatPage() {
       setBurningMessages((prev) => new Set(prev).add(d.messageId));
     });
 
-    // Room settings socket events
     socketClient.on("member:kicked", (data) => {
       const d = data as { roomId: string; kickedUserId: string };
 
-      // If I was kicked, leave the room
       if (user && d.kickedUserId === user.id) {
         socketClient.emit("room:leave", { roomId: d.roomId });
         setActiveRoom(null);
@@ -300,7 +303,6 @@ export default function ChatPage() {
         setRooms((prev) => prev.filter((r) => r.id !== d.roomId));
       }
 
-      // If someone else was kicked, update members list
       if (d.roomId === activeRoom) {
         fetchRoomMembers(d.roomId);
       }
@@ -437,6 +439,7 @@ export default function ChatPage() {
   function handleLogout() {
     localStorage.removeItem("deaddrop_token");
     localStorage.removeItem("deaddrop_user");
+    localStorage.removeItem("deaddrop_refresh");
     socketClient.disconnect();
     router.replace("/login");
   }
@@ -541,19 +544,20 @@ export default function ChatPage() {
 
   if (!user || !token) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-zinc-950">
         <Loader2 className="h-8 w-8 animate-spin text-red-500" />
       </div>
     );
   }
 
   const activeRoomData = rooms.find((r) => r.id === activeRoom);
-  const isCreator = activeRoomData?.creatorId === user.id;
+  const isCreator = !activeRoomData?.creatorId || activeRoomData?.creatorId === user.id;
 
   // ── Render ──
 
   return (
-    <div className="fixed inset-0 flex bg-zinc-950 text-zinc-100 overflow-hidden">
+    <div className="fixed inset-0 flex bg-gray-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden">
+
       {/* ── Sidebar ── */}
       {showSidebar && (
         <div
@@ -562,11 +566,11 @@ export default function ChatPage() {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col md:relative md:z-auto transition-transform duration-300 ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col md:relative md:z-auto transition-transform duration-300 ${
           showSidebar ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
@@ -576,35 +580,32 @@ export default function ChatPage() {
           </button>
           <button
             onClick={() => setShowSidebar(false)}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden"
+            className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 md:hidden"
             aria-label="Collapse sidebar"
           >
             <MessageSquare className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex items-center justify-between">
-        <span className="text-sm text-zinc-400">
-          Logged in as{" "}
-          <span className="text-zinc-100 font-medium">{user.username}</span>
-        </span>
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-sm text-zinc-500 dark:text-zinc-400">
+            Logged in as{" "}
+            <span className="text-zinc-900 dark:text-zinc-100 font-medium">{user.username}</span>
+          </span>
           <button
             onClick={handleLogout}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
+            className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
             title="Logout"
           >
             <LogOut className="h-4 w-4" />
           </button>
         </div>
-      </div>
 
         <CreateRoomButton onCreate={handleCreateRoom} />
 
         <div className="flex-1 overflow-y-auto p-2">
           {rooms.length === 0 && (
-            <p className="text-zinc-500 text-sm text-center mt-4">
+            <p className="text-zinc-400 dark:text-zinc-500 text-sm text-center mt-4">
               No rooms yet
             </p>
           )}
@@ -614,8 +615,8 @@ export default function ChatPage() {
               onClick={() => handleJoinRoom(room.id)}
               className={`w-full text-left px-3 py-2 rounded-md mb-1 transition-colors ${
                 activeRoom === room.id
-                  ? "bg-red-500/20 text-red-400"
-                  : "hover:bg-zinc-800 text-zinc-300"
+                  ? "bg-red-500/20 text-red-500 dark:text-red-400"
+                  : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -627,8 +628,8 @@ export default function ChatPage() {
         </div>
 
         {onlineUsers.length > 0 && (
-          <div className="p-3 border-t border-zinc-800">
-            <div className="flex items-center gap-1 text-xs text-zinc-500">
+          <div className="p-3 border-t border-zinc-200 dark:border-zinc-800">
+            <div className="flex items-center gap-1 text-xs text-zinc-400 dark:text-zinc-500">
               <Users className="h-3 w-3" />
               <span>{onlineUsers.length} online</span>
             </div>
@@ -639,11 +640,11 @@ export default function ChatPage() {
       {/* ── Main chat area ── */}
       <main className="flex-1 flex flex-col min-w-0 min-h-0">
         {activeRoom ? (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowSidebar(!showSidebar)}
-                className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden"
+                className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 md:hidden"
                 aria-label="Toggle sidebar"
               >
                 <MessageSquare className="h-5 w-5" />
@@ -659,9 +660,10 @@ export default function ChatPage() {
               )}
             </div>
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <button
                 onClick={handleCopyInvite}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-400 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs text-zinc-600 dark:text-zinc-400 transition-colors"
                 title="Copy invite link"
               >
                 {copiedInvite ? (
@@ -676,7 +678,6 @@ export default function ChatPage() {
                   </>
                 )}
               </button>
-              {/* Settings button */}
               <button
                 onClick={() => {
                   if (showSettings) {
@@ -686,7 +687,7 @@ export default function ChatPage() {
                     setShowSettings(true);
                   }
                 }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-400 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs text-zinc-600 dark:text-zinc-400 transition-colors"
                 title="Room settings"
               >
                 <Settings className="h-4 w-4" />
@@ -694,23 +695,26 @@ export default function ChatPage() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
-            <button
-              onClick={() => setShowSidebar(!showSidebar)}
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 md:hidden"
-              aria-label="Toggle sidebar"
-            >
-              <MessageSquare className="h-5 w-5" />
-            </button>
-            <span className="text-zinc-500">
-              Select or create a room to begin
-            </span>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 md:hidden"
+                aria-label="Toggle sidebar"
+              >
+                <MessageSquare className="h-5 w-5" />
+              </button>
+              <span className="text-zinc-400 dark:text-zinc-500">
+                Select or create a room to begin
+              </span>
+            </div>
+            <ThemeToggle />
           </div>
         )}
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 relative">
           {!activeRoom && (
-            <div className="flex flex-col items-center justify-center h-full text-zinc-500">
+            <div className="flex flex-col items-center justify-center h-full text-zinc-400 dark:text-zinc-500">
               <Flame className="h-12 w-12 mb-3 opacity-30" />
               <p className="text-lg font-medium">Welcome to DeadDrop</p>
               <p className="text-sm">Create or join a room to begin</p>
@@ -735,10 +739,10 @@ export default function ChatPage() {
                     <div
                       className={`max-w-[70%] rounded-2xl px-4 py-2 ${
                         msg.senderId === "system"
-                          ? "bg-zinc-800/50 text-zinc-500 text-xs italic self-center"
+                          ? "bg-zinc-200/50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-500 text-xs italic self-center"
                           : msg.senderId === user.id
-                          ? "bg-red-500/20 text-red-100"
-                          : "bg-zinc-800 text-zinc-100"
+                          ? "bg-red-500/20 text-red-700 dark:text-red-100"
+                          : "bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"
                       }`}
                     >
                       {msg.senderId === "system" ? (
@@ -756,7 +760,6 @@ export default function ChatPage() {
                       </p>
                     </div>
 
-                    {/* Burn animation overlay */}
                     <BurnAnimation
                       isActive={isBurning}
                       onComplete={() => {
@@ -788,20 +791,19 @@ export default function ChatPage() {
         {activeRoom && (
           <form
             onSubmit={handleSendMessage}
-            className="flex flex-col gap-2 p-4 border-t border-zinc-800 shrink-0"
+            className="flex flex-col gap-2 p-4 border-t border-zinc-200 dark:border-zinc-800 shrink-0"
           >
-            {/* Pending image preview */}
             {pendingImage && (
               <div className="relative inline-block self-start">
                 <img
                   src={pendingImage}
                   alt="Pending image"
-                  className="max-h-32 rounded-lg border border-zinc-700"
+                  className="max-h-32 rounded-lg border border-zinc-300 dark:border-zinc-700"
                 />
                 <button
                   type="button"
                   onClick={() => setPendingImage(null)}
-                  className="absolute -top-2 -right-2 p-1 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-red-400 transition-colors"
+                  className="absolute -top-2 -right-2 p-1 rounded-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-red-400 transition-colors"
                   aria-label="Remove image"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -809,7 +811,6 @@ export default function ChatPage() {
               </div>
             )}
 
-            {/* Input row */}
             <div className="flex items-center gap-2">
               <ImageUploadButton onImageSelected={handleImageSelected} />
               <input
@@ -824,7 +825,7 @@ export default function ChatPage() {
                     ? "Send encrypted message..."
                     : "Send message..."
                 }
-                className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-red-500/50 placeholder:text-zinc-600"
+                className="flex-1 min-w-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-red-500/50 placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
               />
               <button
                 type="submit"
