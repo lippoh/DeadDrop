@@ -36,7 +36,8 @@ export async function getDropByToken(token: string) {
   });
 }
 
-export async function readDrop(
+// NEW: Get encrypted data WITHOUT marking as read
+export async function getDropData(
   token: string,
   password: string | null
 ): Promise<{
@@ -50,29 +51,14 @@ export async function readDrop(
   });
 
   if (!drop) return null;
-
-  if (drop.isRead) {
-    return { drop, alreadyRead: true };
-  }
-
-  if (new Date() > new Date(drop.expiresAt)) {
-    return { drop, expired: true };
-  }
+  if (drop.isRead) return { drop, alreadyRead: true };
+  if (new Date() > new Date(drop.expiresAt)) return { drop, expired: true };
 
   if (drop.hasPassword) {
-    if (!password) {
-      return { drop, wrongPassword: true };
-    }
+    if (!password) return { drop, wrongPassword: true };
     const valid = await bcrypt.compare(password, drop.passwordHash!);
-    if (!valid) {
-      return { drop, wrongPassword: true };
-    }
+    if (!valid) return { drop, wrongPassword: true };
   }
-
-  await prisma.deadDrop.update({
-    where: { id: drop.id },
-    data: { isRead: true, readAt: new Date() },
-  });
 
   return {
     drop: {
@@ -81,6 +67,22 @@ export async function readDrop(
       salt: drop.salt,
     },
   };
+}
+
+// CHANGED: Now only burns, does NOT return data
+export async function readDrop(token: string): Promise<boolean> {
+  const drop = await prisma.deadDrop.findUnique({
+    where: { token },
+  });
+
+  if (!drop || drop.isRead) return false;
+
+  await prisma.deadDrop.update({
+    where: { id: drop.id },
+    data: { isRead: true, readAt: new Date() },
+  });
+
+  return true;
 }
 
 export async function cleanupExpired() {

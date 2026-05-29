@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Lock, Eye, EyeOff, Flame, Loader2, AlertTriangle, Shield, ArrowLeft } from "lucide-react";
 import { decryptMessage } from "@/lib/crypto";
-import { getDrop, readAndBurnDrop } from "@/lib/api";
+import { fetchDropData, getDrop, readAndBurnDrop } from "@/lib/api";
 import type { GetDropResponse } from "@/lib/api";
 
 // ─── States ──────────────────────────────────────────────────────────────────
@@ -87,39 +87,48 @@ export default function ReadDropPage({ params }: { params: Promise<{ token: stri
   // ── Decrypt ──
 
   const handleDecrypt = useCallback(async () => {
-    if (!drop || !key.trim()) return;
-    setViewState("decrypting");
-    setError(null);
+      if (!drop || !key.trim()) return;
+      setViewState("decrypting");
+      setError(null);
 
-    try {
-      const encryptedPayload = await readAndBurnDrop(token, key.trim());
-      const plaintext = await decryptMessage(
-        encryptedPayload.ciphertext,
-        key.trim(),
-        encryptedPayload.iv,
-        encryptedPayload.salt
-      );
+      try {
+        // Step 1: Fetch encrypted data WITHOUT burning
+        const encryptedPayload = await fetchDropData(token, key.trim());
 
-      setDecryptedMessage(plaintext);
-      setViewState("revealed");
+        // Step 2: Decrypt locally in the browser
+        const plaintext = await decryptMessage(
+          encryptedPayload.ciphertext,
+          key.trim(),
+          encryptedPayload.iv,
+          encryptedPayload.salt
+        );
 
-      if (burnTimerRef.current !== null) {
-        window.clearTimeout(burnTimerRef.current);
+        setDecryptedMessage(plaintext);
+        setViewState("revealed");
+
+        // Step 3: Burn on server (fire-and-forget — data already decrypted locally)
+        readAndBurnDrop(token).catch((err) => {
+          console.error("Failed to burn drop on server:", err);
+        });
+
+        if (burnTimerRef.current !== null) {
+          window.clearTimeout(burnTimerRef.current);
+        }
+        if (burnedTimerRef.current !== null) {
+          window.clearTimeout(burnedTimerRef.current);
+        }
+
+        burnTimerRef.current = window.setTimeout(() => {
+          setViewState("burning");
+          burnedTimerRef.current = window.setTimeout(() => setViewState("burned"), 2500);
+        }, 3000);
+      } catch (err: unknown) {
+        // Drop NOT burned yet — user can retry with a different key
+        const message = err instanceof Error ? err.message : "Wrong key. Decryption failed — please check and try again.";
+        setError(message);
+        setViewState("enter_key");
       }
-      if (burnedTimerRef.current !== null) {
-        window.clearTimeout(burnedTimerRef.current);
-      }
-
-      burnTimerRef.current = window.setTimeout(() => {
-        setViewState("burning");
-        burnedTimerRef.current = window.setTimeout(() => setViewState("burned"), 2500);
-      }, 3000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Wrong key. Decryption failed — please check and try again.";
-      setError(message);
-      setViewState("enter_key");
-    }
-  }, [drop, key, token]);
+    }, [drop, key, token]);
 
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-16 bg-void-950 overflow-hidden">

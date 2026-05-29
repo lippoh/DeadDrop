@@ -87,11 +87,21 @@ export async function getDrop(token: string): Promise<GetDropResponse> {
   return handleResponse<GetDropResponse>(response);
 }
 
-export async function readAndBurnDrop(token: string, password: string): Promise<{ ciphertext: string; iv: string; salt: string }> {
-  const response = await fetch(`${API_BASE}/api/drops/${token}/read`, {
+// NEW: Fetch encrypted data without burning
+export async function fetchDropData(token: string, password: string): Promise<{ ciphertext: string; iv: string; salt: string }> {
+  const response = await fetch(`${API_BASE}/api/drops/${token}/data`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   });
   return handleResponse<{ ciphertext: string; iv: string; salt: string }>(response);
+}
+
+// CHANGED: Now only burns (marks as read)
+export async function readAndBurnDrop(token: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/drops/${token}/read`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return handleResponse<void>(response);
 }

@@ -59,20 +59,18 @@ export async function getDrop(req: Request, res: Response) {
   }
 }
 
-export async function readDrop(req: Request, res: Response) {
+// NEW: Fetch encrypted data without burning
+export async function getDropData(req: Request, res: Response) {
   try {
     const { token } = req.params;
     const { password } = req.body;
 
-    const result = await deadDropService.readDrop(token as string, password || null);
-    
+    const result = await deadDropService.getDropData(token as string, password || null);
 
     if (!result) {
       res.status(404).json({ error: 'Drop not found' });
-      
       return;
     }
-    
 
     if (result.alreadyRead) {
       res.status(410).json({ error: 'This drop has already been read' });
@@ -95,7 +93,26 @@ export async function readDrop(req: Request, res: Response) {
       salt: result.drop.salt,
     });
   } catch (err) {
+    console.error('[getDropData]', err);
+    res.status(500).json({ error: 'Failed to fetch drop data' });
+  }
+}
+
+// CHANGED: Now only burns, does NOT return data
+export async function readDrop(req: Request, res: Response) {
+  try {
+    const { token } = req.params;
+
+    const burned = await deadDropService.readDrop(token as string);
+
+    if (!burned) {
+      res.status(410).json({ error: 'Drop not found or already burned' });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (err) {
     console.error('[readDrop]', err);
-    res.status(500).json({ error: 'Failed to read drop' });
+    res.status(500).json({ error: 'Failed to burn drop' });
   }
 }
