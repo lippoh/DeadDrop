@@ -9,7 +9,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function LoginPage() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
@@ -64,13 +64,13 @@ export default function LoginPage() {
 
         <div className="space-y-2">
           <label className="text-xs font-mono text-gray-400 dark:text-white/30 tracking-widest uppercase">
-            Email
+            Username
           </label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter username"
             className="w-full bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] rounded-xl px-5 py-3 text-sm text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/15 focus:outline-none focus:border-accent/40 transition-colors font-mono"
             required
             autoFocus
@@ -94,7 +94,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 dark:bg-accent/10 bg-accent/5 dark:border-accent/30 border-accent/40 text-accent rounded-xl text-sm font-mono tracking-wider dark:hover:bg-accent/20 hover:bg-accent/15 transition-all duration-300 disabled:opacity-50"
+          className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent/10 border border-accent/30 text-accent rounded-xl text-sm font-mono tracking-wider hover:bg-accent/20 transition-all duration-300 disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Sign In"}
           <ArrowRight size={16} />

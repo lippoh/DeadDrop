@@ -1,137 +1,101 @@
+import { Request, Response } from 'express';
+import * as deadDropService from './deaddrops.service';
 
-import { Request, Response, NextFunction } from 'express';
-import { deadDropService } from './deaddrops.service';
-import {
-  createDeadDropSchema,
-  readDeadDropSchema,
-} from './dto/deaddrops.dto';
-
-/**
- * POST /api/drops
- * Create a new dead drop
- *
- * The encryption happens CLIENT-SIDE before this request.
- * The server receives only ciphertext, iv, and salt.
- * It never sees the plaintext message or the AES key.
- */
-export async function createDeadDrop(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+export async function createDrop(req: Request, res: Response) {
   try {
-    // Validate request body with Zod
-    const parsed = createDeadDropSchema.safeParse(req.body);
+    const { ciphertext, iv, salt, password, expiryHours } = req.body;
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: 'Validation failed',
-        details: parsed.error.flatten().fieldErrors,
-      });
+    if (!ciphertext || !iv || !salt) {
+      res.status(400).json({ error: 'Missing encryption data (ciphertext, iv, salt)' });
       return;
     }
 
-    const result = await deadDropService.create(parsed.data);
+    const drop = await deadDropService.createDrop({
+      ciphertext,
+      iv,
+      salt,
+      password: password || null,
+      expiryHours: expiryHours || 48,
+    });
 
     res.status(201).json({
-      token: result.token,
-      expiresAt: result.expiresAt,
-      url: `${process.env.CORS_ORIGIN || ''}/d/${result.token}`,
+      token: drop.token,
+      expiresAt: drop.expiresAt,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    console.error('[createDrop]', err);
+    res.status(500).json({ error: 'Failed to create drop' });
   }
 }
 
-/**
- * GET /api/drops/:token
- * Check if a dead drop exists
- *
- * Returns ONLY metadata (hasPassword, expiresAt, isRead).
- * Does NOT return the ciphertext - the message stays secret.
- */
-export async function getDeadDrop(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+export async function getDrop(req: Request, res: Response) {
   try {
-    const token = Array.isArray(req.params.token)
-      ? req.params.token[0]
-      : req.params.token;
+    const { token } = req.params;
 
-    if (!token) {
-      res.status(400).json({ error: 'Invalid token' });
+    const drop = await deadDropService.getDropByToken(token as string);
+    if (!drop) {
+      res.status(404).json({ error: 'Drop not found' });
       return;
     }
 
-    const result = await deadDropService.getByToken(token);
-
-    if (result.error) {
-      res.status(result.statusCode).json({ error: result.error });
+    if (drop.isRead) {
+      res.status(410).json({ error: 'This drop has already been read' });
       return;
     }
 
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-
-/**
- * POST /api/drops/:token/read
- * Read and destroy a dead drop
- *
- * This is the CRITICAL endpoint:
- * 1. Verifies password (if required)
- * 2. Returns encrypted data for client-side decryption
- * 3. IMMEDIATELY and PERMANENTLY deletes the dead drop
- *
- * After this, the message is GONE. Forever. No recovery.
- */
-export async function readDeadDrop(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const token = Array.isArray(req.params.token)
-      ? req.params.token[0]
-      : req.params.token;
-
-    if (!token) {
-      res.status(400).json({ error: 'Invalid token' });
+    if (new Date() > new Date(drop.expiresAt)) {
+      res.status(410).json({ error: 'This drop has expired' });
       return;
     }
 
-    // Validate request body
-    const parsed = readDeadDropSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({
-        error: 'Validation failed',
-        details: parsed.error.flatten().fieldErrors,
-      });
-      return;
-    }
-
-    const result = await deadDropService.readAndDestroy(
-      token,
-      parsed.data.password
-    );
-
-    if (result.error) {
-      res.status(result.statusCode).json({ error: result.error });
-      return;
-    }
-
-    // Return encrypted data for CLIENT-SIDE decryption
     res.json({
-      ciphertext: result.ciphertext,
-      iv: result.iv,
-      salt: result.salt,
+      hasPassword: drop.hasPassword,
+      expiresAt: drop.expiresAt,
+      createdAt: drop.createdAt,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    console.error('[getDrop]', err);
+    res.status(500).json({ error: 'Failed to fetch drop' });
+  }
+}
+
+export async function readDrop(req: Request, res: Response) {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const result = await deadDropService.readDrop(token as string, password || null);
+    
+
+    if (!result) {
+      res.status(404).json({ error: 'Drop not found' });
+      
+      return;
+    }
+    
+
+    if (result.alreadyRead) {
+      res.status(410).json({ error: 'This drop has already been read' });
+      return;
+    }
+
+    if (result.expired) {
+      res.status(410).json({ error: 'This drop has expired' });
+      return;
+    }
+
+    if (result.wrongPassword) {
+      res.status(403).json({ error: 'Invalid password' });
+      return;
+    }
+
+    res.json({
+      ciphertext: result.drop.ciphertext,
+      iv: result.drop.iv,
+      salt: result.drop.salt,
+    });
+  } catch (err) {
+    console.error('[readDrop]', err);
+    res.status(500).json({ error: 'Failed to read drop' });
   }
 }
