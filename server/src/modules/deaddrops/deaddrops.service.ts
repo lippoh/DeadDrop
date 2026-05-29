@@ -82,3 +82,14 @@ export async function readDrop(
     },
   };
 }
+
+export async function cleanupExpired() {
+  const result = await prisma.deadDrop.deleteMany({
+    where: {
+      expiresAt: { lt: new Date() },
+      isRead: false,
+    },
+  });
+
+  return { deleted: result.count };
+}

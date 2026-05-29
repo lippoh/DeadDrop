@@ -1,6 +1,6 @@
 
 import cron from 'node-cron';
-import { deadDropService } from '../modules/deaddrops/deaddrops.service';
+import * as deadDropService from '../modules/deaddrops/deaddrops.service';
 
  
 /**

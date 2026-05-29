@@ -1,30 +1,8 @@
-
-
 import { Router } from 'express';
-import {
-  createDeadDrop,
-  getDeadDrop,
-  readDeadDrop,
-} from './deaddrops.controller';
+import * as deadDropController from './deaddrops.controller';
 
+export const deadDropRoutes = Router();
 
-const router = Router();
-
-/**
- * Dead Drop API Routes
- *
- * POST   /api/drops           Create a new dead drop
- * GET    /api/drops/:token    Check if a dead drop exists
- * POST   /api/drops/:token/read  Read and destroy a dead drop
- */
-
-// Create a new dead drop (encryption happens client-side)
-router.post('/', createDeadDrop);
-
-// Check if a dead drop exists (metadata only, no ciphertext)
-router.get('/:token', getDeadDrop);
-
-// Read and immediately destroy a dead drop
-router.post('/:token/read', readDeadDrop);
-
-export const deadDropRoutes = router;
+deadDropRoutes.post('/', deadDropController.createDrop);
+deadDropRoutes.get('/:token', deadDropController.getDrop);
+deadDropRoutes.post('/:token/read', deadDropController.readDrop);
