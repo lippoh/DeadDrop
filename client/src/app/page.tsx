@@ -6,9 +6,8 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import AnimatedButton from "@/components/AnimatedButton";
 import Tilt from "react-parallax-tilt";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
-
-// ─── Mobile detection via useSyncExternalStore (React 19 safe) ─────────────
 function useIsMobile(breakpoint = 768) {
   return useSyncExternalStore(
     (onChange) => {
@@ -21,7 +20,6 @@ function useIsMobile(breakpoint = 768) {
   );
 }
 
-// ─── Particle Background ──────────────────────────────────────────────────
 const AmbientBackground = dynamic(
   () => import("@/components/background/AmbientBackground"),
   { ssr: false }
@@ -35,11 +33,11 @@ const InfiniteMarquee = () => {
   const marqueeText = "ZERO KNOWLEDGE • EPHEMERAL • ZERO KNOWLEDGE • EPHEMERAL • ZERO KNOWLEDGE • EPHEMERAL • ";
 
   return (
-    <div className="absolute top-1/2 left-0 w-full overflow-hidden opacity-[0.02] pointer-events-none -translate-y-1/2 flex z-0">
+    <div className="absolute top-1/2 left-0 w-full overflow-hidden dark:opacity-[0.02] opacity-[0.03] pointer-events-none -translate-y-1/2 flex z-0">
       <motion.div
         animate={{ x: ["0%", "-50%"] }}
         transition={{ repeat: Infinity, ease: "linear", duration: 100 }}
-        className="flex w-max whitespace-nowrap font-display font-black text-[200px] leading-none uppercase tracking-tighter"
+        className="flex w-max whitespace-nowrap font-display font-black text-[200px] leading-none uppercase tracking-tighter dark:text-white text-gray-300"
       >
         <span>{marqueeText.repeat(2)}</span>
         <span>{marqueeText.repeat(2)}</span>
@@ -55,7 +53,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     const raw = localStorage.getItem("deaddrop_user");
-     // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (raw) setUser(JSON.parse(raw));
   }, []);
 
@@ -70,25 +68,25 @@ export default function LandingPage() {
   return (
     <main className="relative min-h-screen flex flex-col justify-between overflow-hidden bg-void-950">
 
-      {/* ── Animated Background Layers ── */}
       <GradientOrbs />
       <AmbientBackground />
       <InfiniteMarquee />
 
       {/* Header */}
-       <header className="relative z-10 p-6 md:p-8 flex justify-between items-center">
-        <div className="font-display font-light tracking-[0.4em] text-white/40 text-xs">
+      <header className="relative z-10 p-6 md:p-8 flex justify-between items-center">
+        <div className="font-display font-light tracking-[0.4em] dark:text-white/40 text-gray-400 text-xs">
           SYS.DEADDROP
         </div>
         <div className="flex gap-3 items-center">
-          <div className="hidden sm:flex gap-3 items-center text-xs font-mono text-white/40 tracking-widest mr-4">
+          <ThemeToggle />
+          <div className="hidden sm:flex gap-3 items-center text-xs font-mono dark:text-white/40 text-gray-400 tracking-widest mr-4">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> E2E ACTIVE
           </div>
           {user ? (
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg dark:border-white/10 border-gray-300 dark:bg-white/5 bg-gray-100">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-xs font-mono tracking-widest text-white/60">{user.username}</span>
+                <span className="text-xs font-mono tracking-widest dark:text-white/60 text-gray-600">{user.username}</span>
               </div>
               <button
                 onClick={() => {
@@ -97,7 +95,7 @@ export default function LandingPage() {
                   localStorage.removeItem("deaddrop_refresh");
                   setUser(null);
                 }}
-                className="px-4 py-2 text-xs font-mono tracking-widest text-white/40 hover:text-red-400 border border-white/10 hover:border-red-500/30 rounded-lg transition-all duration-300"
+                className="px-4 py-2 text-xs font-mono tracking-widest dark:text-white/40 text-gray-500 hover:text-red-400 dark:border-white/10 border-gray-300 hover:border-red-500/30 rounded-lg dark:bg-transparent bg-gray-100 transition-all duration-300"
               >
                 LOGOUT
               </button>
@@ -106,13 +104,13 @@ export default function LandingPage() {
             <>
               <button
                 onClick={() => router.push("/login")}
-                className="px-4 py-2 text-xs font-mono tracking-widest text-white/50 hover:text-white border border-white/10 hover:border-white/30 rounded-lg transition-all duration-300"
+                className="px-4 py-2 text-xs font-mono tracking-widest dark:text-white/50 text-gray-600 hover:dark:text-white hover:text-gray-900 dark:border-white/10 border-gray-300 hover:dark:border-white/30 hover:border-gray-500 rounded-lg transition-all duration-300"
               >
                 LOGIN
               </button>
               <button
                 onClick={() => router.push("/register")}
-                className="px-4 py-2 text-xs font-mono tracking-widest text-accent border border-accent/30 hover:border-accent/60 rounded-lg hover:bg-accent/5 transition-all duration-300"
+                className="px-4 py-2 text-xs font-mono tracking-widest text-accent dark:border-accent/30 border-accent/50 hover:dark:border-accent/60 hover:border-accent rounded-lg dark:hover:bg-accent/5 hover:bg-accent/10 transition-all duration-300"
               >
                 REGISTER
               </button>
@@ -126,7 +124,7 @@ export default function LandingPage() {
         <div className="text-center flex flex-col items-center">
 
           <div className="relative mb-8 flex justify-center overflow-hidden">
-            <h1 className="text-5xl md:text-[9rem] font-display font-light tracking-widest uppercase relative z-10 text-white mix-blend-screen flex">
+            <h1 className="text-5xl md:text-[9rem] font-display font-light tracking-widest uppercase relative z-10 dark:text-white text-gray-900 mix-blend-screen flex">
               {titleText.map((letter, index) => (
                 <motion.span
                   key={index}
@@ -163,9 +161,9 @@ export default function LandingPage() {
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.8, duration: 1, ease: "easeOut" }}
-              className="text-sm md:text-lg text-white/50 font-sans font-light tracking-[0.4em] uppercase"
+              className="text-sm md:text-lg dark:text-white/50 text-gray-500 font-sans font-light tracking-[0.4em] uppercase"
             >
-              Speak. <span className="text-white mx-2">Once.</span> <span className="text-accent text-glow">Burn.</span>
+              Speak. <span className="dark:text-white text-gray-800 mx-2">Once.</span> <span className="text-accent text-glow">Burn.</span>
             </motion.p>
           </div>
 
@@ -197,17 +195,17 @@ export default function LandingPage() {
             className="group"
           >
             {isMobile ? (
-              <div className="glass-panel p-8 h-full flex flex-col gap-6 border border-white/5 relative overflow-hidden">
+              <div className="glass-panel p-8 h-full flex flex-col gap-6 dark:border-white/5 border-gray-200 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-accent/50 to-transparent" />
                 <h3 className="font-display text-sm text-accent tracking-[0.2em]">{step.title}</h3>
-                <p className="font-sans text-white/40 leading-relaxed text-sm font-light">{step.desc}</p>
+                <p className="font-sans dark:text-white/40 text-gray-500 leading-relaxed text-sm font-light">{step.desc}</p>
               </div>
             ) : (
               <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} scale={1.02} transitionSpeed={2500} glareEnable glareMaxOpacity={0.15}>
-                <div className="glass-panel p-10 h-full flex flex-col gap-6 border border-white/5 hover:border-accent/30 transition-colors duration-700 relative overflow-hidden">
+                <div className="glass-panel p-10 h-full flex flex-col gap-6 dark:border-white/5 border-gray-200 hover:dark:border-accent/30 hover:border-accent/50 transition-colors duration-700 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-accent/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                   <h3 className="font-display text-sm text-accent tracking-[0.2em]">{step.title}</h3>
-                  <p className="font-sans text-white/40 leading-relaxed text-sm font-light">{step.desc}</p>
+                  <p className="font-sans dark:text-white/40 text-gray-500 leading-relaxed text-sm font-light">{step.desc}</p>
                 </div>
               </Tilt>
             )}
@@ -216,7 +214,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 p-8 text-center text-[8px] md:text-[10px] font-mono text-white/20 tracking-[0.15em] md:tracking-[0.3em] uppercase">
+      <footer className="relative z-10 p-8 text-center text-[8px] md:text-[10px] font-mono dark:text-white/20 text-gray-400 tracking-[0.15em] md:tracking-[0.3em] uppercase">
         No logs. No recovery. Zero-knowledge.
       </footer>
     </main>

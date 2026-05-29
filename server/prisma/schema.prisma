@@ -58,8 +58,8 @@ model Room {
   name      String
   createdAt DateTime @default(now()) @map("created_at")
   
-  creatorId String   @map("creator_id")
-  creator   User     @relation(fields: [creatorId], references: [id])
+  creatorId String?   @map("creator_id")
+  creator   User?     @relation(fields: [creatorId], references: [id])
   
   members   RoomMember[]
   messages  Message[]

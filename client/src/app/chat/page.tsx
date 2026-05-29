@@ -557,7 +557,10 @@ export default function ChatPage() {
 
   return (
     <div className="fixed inset-0 flex bg-gray-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden">
+<<<<<<< HEAD
 
+=======
+>>>>>>> 46c86d5c636694ae574361e20859920954d10ff1
       {/* ── Sidebar ── */}
       {showSidebar && (
         <div
@@ -587,11 +590,21 @@ export default function ChatPage() {
           </button>
         </div>
 
+<<<<<<< HEAD
         <div className="flex items-center justify-between px-3 py-2">
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
             Logged in as{" "}
             <span className="text-zinc-900 dark:text-zinc-100 font-medium">{user.username}</span>
           </span>
+=======
+        <div className="flex items-center justify-between">
+        <span className="text-sm text-zinc-500 dark:text-zinc-400">
+          Logged in as{" "}
+          <span className="text-zinc-900 dark:text-zinc-100 font-medium">{user.username}</span>
+        </span>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+>>>>>>> 46c86d5c636694ae574361e20859920954d10ff1
           <button
             onClick={handleLogout}
             className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
@@ -696,6 +709,7 @@ export default function ChatPage() {
           </div>
         ) : (
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+<<<<<<< HEAD
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowSidebar(!showSidebar)}
@@ -709,6 +723,18 @@ export default function ChatPage() {
               </span>
             </div>
             <ThemeToggle />
+=======
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 md:hidden"
+              aria-label="Toggle sidebar"
+            >
+              <MessageSquare className="h-5 w-5" />
+            </button>
+            <span className="text-zinc-400 dark:text-zinc-500">
+              Select or create a room to begin
+            </span>
+>>>>>>> 46c86d5c636694ae574361e20859920954d10ff1
           </div>
         )}
 

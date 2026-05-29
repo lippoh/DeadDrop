@@ -32,11 +32,15 @@ setInterval(() => {
  * Create a rate limiter middleware for Express.
  */
 export function createRateLimiter(config: RateLimitConfig) {
+  
   return function rateLimiter(
     req: import("express").Request,
     res: import("express").Response,
     next: import("express").NextFunction
   ) {
+    if (req.method === "OPTIONS") {
+      return next();
+    }
     const ip =
       (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
       req.socket.remoteAddress ||
@@ -91,10 +95,10 @@ export function createRateLimiter(config: RateLimitConfig) {
 // Pre-configured limiters for auth endpoints
 export const authLoginLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 10,
+  maxRequests: 20,
 });
 
 export const authRegisterLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
-  maxRequests: 5,
+  maxRequests: 10,
 });

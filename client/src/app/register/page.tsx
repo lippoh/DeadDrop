@@ -48,6 +48,10 @@ export default function RegisterPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Registration failed");
 
+<<<<<<< HEAD
+=======
+      // Auto-login after registration
+>>>>>>> 46c86d5c636694ae574361e20859920954d10ff1
       localStorage.setItem("deaddrop_token", data.accessToken);
       localStorage.setItem("deaddrop_refresh", data.refreshToken);
       localStorage.setItem("deaddrop_user", JSON.stringify(data.user));
@@ -61,6 +65,7 @@ export default function RegisterPage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-void-950 px-4">
+<<<<<<< HEAD
       {/* ThemeToggle OUTSIDE the form, fixed top-right */}
       <div className="fixed top-4 right-4 z-10">
         <ThemeToggle />
@@ -68,6 +73,13 @@ export default function RegisterPage() {
 
       <form onSubmit={handleRegister} className="w-full max-w-sm space-y-6">
         <div className="text-center">
+=======
+      <form onSubmit={handleRegister} className="w-full max-w-sm space-y-6">
+        <div className="text-center">
+          <div className="flex justify-end mb-2">
+            <ThemeToggle />
+          </div>
+>>>>>>> 46c86d5c636694ae574361e20859920954d10ff1
           <h1 className="text-2xl font-display tracking-widest uppercase text-gray-900 dark:text-white">
             Register
           </h1>

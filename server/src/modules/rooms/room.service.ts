@@ -41,7 +41,6 @@ export async function leaveRoom(roomId: string, userId: string) {
     where: { roomId, userId },
   });
 
-  // Delete room if no members left
   const memberCount = await prisma.roomMember.count({
     where: { roomId },
   });
@@ -51,7 +50,6 @@ export async function leaveRoom(roomId: string, userId: string) {
 }
 
 export async function renameRoom(roomId: string, userId: string, name: string) {
-  // Verify the user is a member of the room
   const membership = await prisma.roomMember.findUnique({
     where: { roomId_userId: { roomId, userId } },
   });
@@ -73,7 +71,7 @@ export async function deleteRoom(roomId: string, userId: string) {
     throw new Error('Room not found');
   }
 
-  if (room.creatorId !== userId) {
+  if (room.creatorId && room.creatorId !== userId) {
     throw new Error('Only the room creator can delete it');
   }
 
@@ -87,7 +85,7 @@ export async function kickMember(roomId: string, requesterId: string, targetUser
     throw new Error('Room not found');
   }
 
-  if (room.creatorId !== requesterId) {
+  if (room.creatorId && room.creatorId !== requesterId) {
     throw new Error('Only the room creator can kick members');
   }
 
